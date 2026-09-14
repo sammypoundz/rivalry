@@ -13,14 +13,15 @@ import "./Profile.css";
 
 interface ProfileProps {
   contestant: Contestant;
+  onBack: () => void;
 }
 
-export default function Profile({ contestant }: ProfileProps) {
+export default function Profile({ contestant, onBack }: ProfileProps) {
   // Section components currently read the default contestant from data.ts;
   // this wrapper renders them for the profile screen.
   return (
     <div className="profile app">
-      <HeroHeader image={contestant.heroImage} name={contestant.name} />
+      <HeroHeader image={contestant.heroImage} name={contestant.name} onBack={onBack} />
       <IdentitySection />
       <CountdownTimer />
       <StatsCard

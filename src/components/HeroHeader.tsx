@@ -4,9 +4,10 @@ import "./HeroHeader.css";
 interface HeroHeaderProps {
   image: string;
   name: string;
+  onBack: () => void;
 }
 
-export default function HeroHeader({ image, name }: HeroHeaderProps) {
+export default function HeroHeader({ image, name, onBack }: HeroHeaderProps) {
   const [favorited, setFavorited] = useState(false);
 
   return (
@@ -15,7 +16,7 @@ export default function HeroHeader({ image, name }: HeroHeaderProps) {
       <div className="hero__scrim" />
 
       <div className="hero__actions">
-        <button className="hero__btn" aria-label="Back">
+        <button className="hero__btn" aria-label="Back" onClick={onBack}>
           ←
         </button>
         <div className="hero__actions-right">

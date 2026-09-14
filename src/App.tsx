@@ -12,6 +12,11 @@ export default function App() {
   const [selected, setSelected] = useState<Contestant | null>(null);
   const [openContest, setOpenContest] = useState<Contest | null>(null);
   const [joinedContestId, setJoinedContestId] = useState<number | null>(null);
+  const [prevTab, setPrevTab] = useState<Tab>("dashboard");
+
+  useEffect(() => {
+    if (tab !== "profile") setPrevTab(tab);
+  }, [tab]);
 
   const openProfile = (c: Contestant) => {
     setSelected(c);
@@ -49,9 +54,13 @@ export default function App() {
       )}
       {tab === "leaderboard" && <Leaderboard onSelect={openProfile} />}
       {tab === "profile" && (
-        <Profile contestant={selected ?? contestants[0]} />
+        <Profile
+          contestant={selected ?? contestants[0]}
+          onBack={() => setTab(prevTab)}
+        />
       )}
 
+      {tab !== "profile" && (
       <BottomNav
         active={tab}
         onChange={(t) => {
@@ -60,6 +69,7 @@ export default function App() {
           if (t === "profile") setSelected((s) => s ?? contestants[0]);
         }}
       />
+      )}
     </>
   );
 }
