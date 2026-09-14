@@ -5,6 +5,9 @@ import Leaderboard from "./components/Leaderboard";
 import Profile from "./components/Profile";
 import Contests from "./components/Contests";
 import BottomNav, { type Tab } from "./components/BottomNav";
+import DesktopSidebar from "./components/DesktopSidebar";
+import VoteFeed from "./components/VoteFeed";
+import ScrollSticker from "./components/ScrollSticker";
 import "./App.css";
 
 export default function App() {
@@ -29,6 +32,15 @@ export default function App() {
 
   return (
     <>
+      <DesktopSidebar
+        onOpenContest={(c) => {
+          setOpenContest(c);
+          setTab("contests");
+        }}
+        onSelectContestant={openProfile}
+      />
+      <VoteFeed mobileVisible={tab === "dashboard"} />
+      {tab === "dashboard" && <ScrollSticker />}
       {tab === "dashboard" && (
         <Dashboard
           onSelect={openProfile}

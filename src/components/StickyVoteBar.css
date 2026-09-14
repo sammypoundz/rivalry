@@ -57,3 +57,13 @@
 .sticky-bar--active .sticky-bar__cta {
   transform: scale(0.95);
 }
+
+/* Tablet: align with the main body, which is shifted right by 150px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sticky-bar {
+    left: 150px;
+    transform: none;
+    width: calc(100% - 150px);
+    max-width: none;
+  }
+}
