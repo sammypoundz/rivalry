@@ -1,0 +1,85 @@
+.progress {
+  margin: 26px 20px 0;
+  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--black-card);
+  border: 1px solid var(--grey-dark);
+}
+
+.progress__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.progress__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.progress__numbers {
+  font-size: 0.72rem;
+  color: var(--grey);
+}
+
+.progress__numbers strong {
+  color: var(--gold-light);
+  font-weight: 700;
+}
+
+.progress__track {
+  height: 12px;
+  border-radius: 999px;
+  background: #1e1e1e;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.progress__fill {
+  position: relative;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--gold-dark),
+    var(--gold),
+    var(--gold-light)
+  );
+  animation: fillGrow 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+@keyframes fillGrow {
+  from {
+    width: 0 !important;
+  }
+}
+
+.progress__spark {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+  animation: sparkSlide 2.4s linear infinite;
+}
+
+@keyframes sparkSlide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.progress__hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.68rem;
+  color: var(--grey);
+}

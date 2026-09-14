@@ -1,0 +1,20 @@
+.identity {
+  padding: 20px 20px 0;
+}
+
+.identity__name {
+  font-size: 1.7rem;
+  font-weight: 800;
+  background: linear-gradient(120deg, var(--white), var(--grey));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.identity__tagline {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--gold-light);
+  opacity: 0.9;
+}

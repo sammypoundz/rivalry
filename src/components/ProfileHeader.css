@@ -1,0 +1,62 @@
+.profile-header {
+  position: relative;
+}
+
+.profile-header__image-wrap {
+  position: relative;
+  height: 420px;
+  overflow: hidden;
+}
+
+.profile-header__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: heroZoom 12s ease-in-out infinite alternate;
+}
+
+@keyframes heroZoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+.profile-header__gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0) 30%,
+    rgba(0, 0, 0, 0) 55%,
+    var(--black) 100%
+  );
+}
+
+.profile-header__content {
+  position: relative;
+  margin-top: -70px;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  z-index: 5;
+}
+
+.profile-header__name {
+  margin-top: 14px;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: 0.01em;
+}
+
+.profile-header__meta {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: #9a9a9a;
+  letter-spacing: 0.03em;
+}

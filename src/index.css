@@ -1,0 +1,59 @@
+:root {
+  --black: #0a0a0a;
+  --black-soft: #121212;
+  --black-card: #161616;
+  --gold: #d4af37;
+  --gold-light: #f0d67c;
+  --gold-dark: #9a7b1e;
+  --white: #ffffff;
+  --grey: #9a9a9a;
+  --grey-dark: #4a4a4a;
+  --radius: 24px;
+  --max-width: 480px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: "Poppins", system-ui, sans-serif;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  max-width: 480px;
+  background: var(--black);
+  min-height: 100vh;
+  position: relative;
+  box-shadow: 0 0 80px rgba(212, 175, 55, 0.06);
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  background: none;
+  color: inherit;
+}
+
+img {
+  display: block;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

@@ -1,0 +1,35 @@
+.vote-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 22px;
+  border-radius: 20px;
+  background: linear-gradient(
+    145deg,
+    rgba(212, 175, 55, 0.16),
+    rgba(212, 175, 55, 0.04)
+  );
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow:
+    0 0 24px rgba(212, 175, 55, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+}
+
+.vote-badge__label {
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  font-weight: 500;
+}
+
+.vote-badge__number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  line-height: 1.2;
+}
