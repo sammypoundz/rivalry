@@ -1,0 +1,104 @@
+.leaderboard {
+  padding: 24px 20px 100px;
+}
+
+.leaderboard__header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.leaderboard__title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  background: linear-gradient(120deg, var(--gold-light), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.leaderboard__subtitle {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--grey);
+}
+
+.leaderboard__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--black-card);
+  border: 1px solid var(--grey-dark);
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.leaderboard__row:hover {
+  border-color: rgba(212, 175, 55, 0.45);
+  transform: translateX(4px);
+}
+
+.leaderboard__rank {
+  min-width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #1a1405;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+}
+
+.leaderboard__img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(212, 175, 55, 0.4);
+}
+
+.leaderboard__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard__name {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.leaderboard__bar-track {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--grey-dark);
+  overflow: hidden;
+}
+
+.leaderboard__bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  transition: width 0.6s ease;
+}
+
+.leaderboard__votes {
+  font-size: 0.66rem;
+  color: var(--gold-light);
+}
+
+.leaderboard__chevron {
+  font-size: 1.3rem;
+  color: var(--grey);
+}
