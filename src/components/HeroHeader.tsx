@@ -1,26 +1,53 @@
 import { useState } from "react";
 import { Heart, Share2, X, Copy, Check, Link2 } from "lucide-react";
 import { profileShareLink } from "./ShareProfile";
+import { toggleLike } from "../lib/api";
 import "./HeroHeader.css";
 
 interface HeroHeaderProps {
   image: string;
   name: string;
+  /** API (ObjectId) id used for likes; empty in demo/seed mode */
+  contestantId?: string;
+  likeCount?: number;
+  liked?: boolean;
   onBack: () => void;
 }
 
-export default function HeroHeader({ image, name, onBack }: HeroHeaderProps) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(1284);
+export default function HeroHeader({
+  image,
+  name,
+  contestantId = "",
+  likeCount: initialLikes = 0,
+  liked: initialLiked = false,
+  onBack,
+}: HeroHeaderProps) {
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState(initialLikes);
+  const [likePending, setLikePending] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sharedTo, setSharedTo] = useState<string | null>(null);
 
-  const toggleLike = () => {
-    setLiked((l) => {
-      setLikeCount((c) => (l ? c - 1 : c + 1));
-      return !l;
-    });
+  const toggleLikeLocal = async () => {
+    if (likePending) return;
+    // Optimistic flip
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikeCount((c) => Math.max(0, c + (nextLiked ? 1 : -1)));
+    if (!/^[0-9a-fA-F]{24}$/.test(contestantId)) return; // demo mode — local only
+    setLikePending(true);
+    try {
+      const res = await toggleLike(contestantId);
+      setLiked(res.liked);
+      setLikeCount(res.likes);
+    } catch {
+      // Revert on failure
+      setLiked(!nextLiked);
+      setLikeCount((c) => Math.max(0, c + (nextLiked ? -1 : 1)));
+    } finally {
+      setLikePending(false);
+    }
   };
 
   const shareLink = profileShareLink(1); // hero header shows the default contestant
@@ -88,7 +115,7 @@ export default function HeroHeader({ image, name, onBack }: HeroHeaderProps) {
         <button
           className={`hero__btn hero__btn--like${liked ? " hero__btn--fav" : ""}`}
           aria-label="Like"
-          onClick={toggleLike}
+          onClick={toggleLikeLocal}
         >
           <Heart size={18} fill={liked ? "currentColor" : "none"} />
         </button>

@@ -1,7 +1,7 @@
-import { contestant } from "../data";
+import type { Contestant } from "../data";
 import "./PhotoGallery.css";
 
-export default function PhotoGallery() {
+export default function PhotoGallery({ contestant }: { contestant: Contestant }) {
   return (
     <section className="gallery">
       <h2 className="gallery__title">Gallery</h2>

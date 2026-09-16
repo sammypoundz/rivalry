@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { contestant } from "../data";
 import "./CountdownTimer.css";
 
 interface TimeLeft {
@@ -9,8 +8,8 @@ interface TimeLeft {
   seconds: number;
 }
 
-function getTimeLeft(): TimeLeft {
-  const diff = Math.max(0, contestant.votingEndsAt - Date.now());
+function getTimeLeft(endsAt: number): TimeLeft {
+  const diff = Math.max(0, endsAt - Date.now());
   return {
     days: Math.floor(diff / 86400000),
     hours: Math.floor((diff / 3600000) % 24),
@@ -19,13 +18,14 @@ function getTimeLeft(): TimeLeft {
   };
 }
 
-export default function CountdownTimer() {
-  const [time, setTime] = useState<TimeLeft>(getTimeLeft);
+export default function CountdownTimer({ endsAt }: { endsAt: number }) {
+  const [time, setTime] = useState<TimeLeft>(() => getTimeLeft(endsAt));
 
   useEffect(() => {
-    const id = setInterval(() => setTime(getTimeLeft()), 1000);
+    setTime(getTimeLeft(endsAt));
+    const id = setInterval(() => setTime(getTimeLeft(endsAt)), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [endsAt]);
 
   const units: Array<[string, number]> = [
     ["Days", time.days],

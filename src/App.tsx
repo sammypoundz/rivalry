@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { contestants as seedContestants, contests, type Contestant, type Contest } from "./data";
+import { useLiveData, contestants as seedContestants, contests as seedContests, type Contestant, type Contest } from "./data";
 import Dashboard from "./components/Dashboard";
 import Leaderboard from "./components/Leaderboard";
 import Profile from "./components/Profile";
@@ -10,16 +10,64 @@ import BottomNav, { type Tab } from "./components/BottomNav";
 import DesktopSidebar from "./components/DesktopSidebar";
 import VoteFeed from "./components/VoteFeed";
 import ScrollSticker from "./components/ScrollSticker";
+import { AuthProvider, useAuth } from "./auth/AuthProvider";
+import AuthOverlay from "./auth/AuthOverlay";
+import { getMyContestants } from "./lib/api";
 import "./App.css";
 
+function AppShell() {
+  const { user, loading } = useAuth();
+  return (
+    <>
+      {loading ? null : user ? (
+        <MainApp />
+      ) : (
+        <AuthOverlay />
+      )}
+    </>
+  );
+}
+
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
+
+function MainApp() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [selected, setSelected] = useState<Contestant | null>(null);
   const [openContest, setOpenContest] = useState<Contest | null>(null);
-  const [joinedContestId, setJoinedContestId] = useState<number | null>(null);
+  const [joinedContestIds, setJoinedContestIds] = useState<string[]>([]);
   const [prevTab, setPrevTab] = useState<Tab>("dashboard");
   const [extraContestants, setExtraContestants] = useState<Contestant[]>([]);
-  const allContestants = [...seedContestants, ...extraContestants];
+  const live = useLiveData();
+  const { contestants, contests } = live.usingFallback
+    ? { contestants: [...seedContestants, ...extraContestants], contests: seedContests }
+    : { contestants: [...live.contestants, ...extraContestants], contests: live.contests };
+  const allContestants = contestants;
+  const { user } = useAuth();
+
+  // Load the contests the user has actually entered (synced everywhere) and
+  // refresh whenever auth or the live data changes.
+  useEffect(() => {
+    if (!user) {
+      setJoinedContestIds([]);
+      return;
+    }
+    let cancelled = false;
+    getMyContestants()
+      .then((res) => {
+        if (!cancelled)
+          setJoinedContestIds(res.contestants.map((c) => c.contest.id));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, live.contests]);
 
   // Shared profile links look like .../#/vote/{id}
   const openProfileFromHash = useCallback(
@@ -39,11 +87,24 @@ export default function App() {
   );
 
   useEffect(() => {
-    const onHash = () => openProfileFromHash([...seedContestants, ...extraContestants]);
+    const onHash = () => openProfileFromHash(allContestants);
     onHash();
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, [openProfileFromHash, extraContestants]);
+  }, [openProfileFromHash, allContestants]);
+
+  // When live data arrives/refreshes, re-point `selected` at the matching
+  // live contestant so a profile opened during the loading window (seed data,
+  // no apiId) doesn't stay stale and break voting afterwards.
+  useEffect(() => {
+    setSelected((s) => {
+      if (!s) return s;
+      const match = allContestants.find(
+        (c) => (s.apiId && c.apiId === s.apiId) || c.id === s.id,
+      );
+      return match ?? s;
+    });
+  }, [allContestants]);
 
   useEffect(() => {
     if (tab !== "profile") setPrevTab(tab);
@@ -72,11 +133,12 @@ export default function App() {
       {tab === "dashboard" && (
         <Dashboard
           onSelect={openProfile}
-          joinedContest={contests.find((c) => c.id === joinedContestId) ?? null}
+          joinedContest={contests.find((c) => joinedContestIds.includes(c.apiId ?? "")) ?? null}
           onOpenContest={(c) => {
             setOpenContest(c);
             setTab("contests");
           }}
+          onEarn={() => setTab("earn")}
         />
       )}
       {tab === "contests" && (
@@ -84,8 +146,9 @@ export default function App() {
           contest={openContest}
           onOpen={(c) => setOpenContest(c)}
           onBack={() => setOpenContest(null)}
-          joinedContestId={joinedContestId}
-          onJoin={(id) => setJoinedContestId(id)}
+          joinedContestIds={joinedContestIds}
+          onJoined={() => live.refresh()}
+          allContestants={allContestants}
           onSelect={(id) => {
             const c = allContestants.find((x) => x.id === id);
             if (c) openProfile(c);
@@ -106,6 +169,7 @@ export default function App() {
       {tab === "earn" && <Earn />}
       {tab === "profile" && (
         <Profile
+          key={selected?.id ?? "none"}
           contestant={selected ?? allContestants[0]}
           onBack={() => setTab(prevTab)}
         />

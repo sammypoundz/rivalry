@@ -1,3 +1,25 @@
 .profile {
   padding-bottom: 110px;
 }
+
+.profile__logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 40px);
+  margin: 18px 20px 0;
+  padding: 13px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid rgba(229, 72, 77, 0.45);
+  color: #e5484d;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.profile__logout:hover {
+  background: rgba(229, 72, 77, 0.12);
+}

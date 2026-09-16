@@ -1,0 +1,226 @@
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 5, 5, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.auth-overlay__card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--black-soft, #121212);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 24px;
+  padding: 28px 22px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+  animation: auth-pop 0.25s ease;
+  box-sizing: border-box;
+}
+
+@media (max-width: 380px) {
+  .auth-overlay {
+    padding: 14px;
+  }
+  .auth-overlay__card {
+    padding: 22px 16px;
+  }
+}
+
+@keyframes auth-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.auth-overlay__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--grey, #9a9a9a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-overlay__close:hover {
+  color: var(--white, #fff);
+  border-color: var(--gold, #d4af37);
+}
+
+.auth-overlay__logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    var(--gold, #d4af37),
+    var(--gold-dark, #9a7b1e)
+  );
+  color: var(--black, #0a0a0a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.auth-overlay__title {
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+
+.auth-overlay__subtitle {
+  font-size: 12.5px;
+  color: var(--grey, #9a9a9a);
+  line-height: 1.55;
+  margin-top: 5px;
+}
+
+.auth-overlay__tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 4px;
+  margin: 18px 0 14px;
+}
+
+.auth-overlay__tab {
+  flex: 1;
+  padding: 9px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--grey, #9a9a9a);
+  transition: all 0.2s ease;
+}
+
+.auth-overlay__tab--active {
+  background: linear-gradient(
+    135deg,
+    var(--gold, #d4af37),
+    var(--gold-dark, #9a7b1e)
+  );
+  color: var(--black, #0a0a0a);
+}
+
+.auth-overlay__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-overlay__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--black-card, #161616);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  padding: 12px 14px;
+  color: var(--grey, #9a9a9a);
+  min-width: 0;
+}
+
+.auth-overlay__field:focus-within {
+  border-color: var(--gold, #d4af37);
+  color: var(--gold, #d4af37);
+}
+
+.auth-overlay__field > svg {
+  flex-shrink: 0;
+}
+
+.auth-overlay__field input {
+  flex: 1 1 0;
+  min-width: 0; /* allow the input to shrink on small screens */
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--white, #fff);
+  font-family: inherit;
+  font-size: 13.5px;
+}
+
+.auth-overlay__field input::placeholder {
+  color: var(--grey-dark, #4a4a4a);
+}
+
+.auth-overlay__eye {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--grey, #9a9a9a);
+  flex: 0 0 auto;
+  transition: color 0.2s;
+}
+
+.auth-overlay__eye:hover {
+  color: var(--gold, #d4af37);
+}
+
+.auth-overlay__error {
+  color: #ff7676;
+  font-size: 12px;
+}
+
+.auth-overlay__submit {
+  background: linear-gradient(
+    135deg,
+    var(--gold, #d4af37),
+    var(--gold-dark, #9a7b1e)
+  );
+  color: var(--black, #0a0a0a);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  margin-top: 4px;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.auth-overlay__submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.auth-overlay__switch {
+  font-size: 12px;
+  color: var(--grey, #9a9a9a);
+  text-align: center;
+  margin-top: 14px;
+}
+
+.auth-overlay__switch button {
+  color: var(--gold, #d4af37);
+  font-weight: 700;
+  text-decoration: underline;
+  font-size: 12px;
+}

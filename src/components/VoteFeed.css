@@ -173,10 +173,6 @@
 
 /* Mobile: fading toasts at the top of the screen */
 @media (max-width: 767px) {
-  .vote-feed--mobile-hidden {
-    display: none;
-  }
-
   .vote-feed {
     display: flex;
     flex-direction: column;
@@ -248,5 +244,10 @@
 
   .vote-feed__close:hover {
     color: var(--white);
+  }
+
+  /* Declared last so it wins over .vote-feed { display: flex } above */
+  .vote-feed--mobile-hidden {
+    display: none;
   }
 }

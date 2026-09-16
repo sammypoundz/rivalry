@@ -1,5 +1,7 @@
 export interface Contestant {
   id: number;
+  /** Real backend ID (Mongo ObjectId) used for API calls; same as id for seed data. */
+  apiId?: string;
   number: number;
   name: string;
   state: string;
@@ -12,6 +14,7 @@ export interface Contestant {
   voteGoal: number;
   rank: number;
   prize: number;
+  likes?: number;
   votingEndsAt: number; // epoch ms
 }
 
@@ -116,6 +119,8 @@ export const contestants: Contestant[] = [
 
 export interface Contest {
   id: number;
+  /** Real backend ID (Mongo ObjectId) used for API calls. */
+  apiId?: string;
   title: string;
   tagline: string;
   category: string;
@@ -123,6 +128,8 @@ export interface Contest {
   endsAt: number; // epoch ms
   status: "voting-live" | "upcoming" | "ended";
   contestantIds: number[];
+  /** Backend ids of the contestants in this contest (for live rosters). */
+  contestantApiIds?: string[];
   totalVotes: number;
   rewards: { position: string; amount: number; perk: string }[];
 }
@@ -181,10 +188,129 @@ export const contests: Contest[] = [
   },
 ];
 
+/**
+ * Maps an API contestant (Mongo ObjectId, ISO dates) to the app's Contestant shape.
+ */
+export function mapApiContestant(c: ApiContestant, index: number): Contestant {
+  return {
+    id: index + 1, // app uses numeric ids for hash links/rankings
+    apiId: c.id,
+    number: c.number,
+    name: c.name,
+    state: c.state,
+    age: c.age,
+    occupation: c.occupation,
+    bio: c.bio,
+    heroImage: c.heroImage,
+    gallery: c.gallery ?? [],
+    votes: c.votes,
+    voteGoal: c.voteGoal,
+    rank: c.rank ?? index + 1,
+    prize: c.prize ?? 50000,
+    likes: c.likes ?? 0,
+    votingEndsAt: new Date(c.votingEndsAt).getTime(),
+  };
+}
+
+/**
+ * Maps an API contest to the app's Contest shape.
+ */
+export function mapApiContest(c: ApiContest, index: number): Contest {
+  return {
+    id: index + 1, // stable numeric id for hash links/keys
+    apiId: c.id,
+    title: c.title,
+    tagline: c.tagline,
+    category: c.category,
+    coverImage: c.coverImage,
+    endsAt: new Date(c.endsAt).getTime(),
+    status: (c.status as Contest["status"]) || "upcoming",
+    contestantIds: (c.contestants ?? []).map((x, i) => Number(x.id) || i + 1),
+    contestantApiIds: (c.contestants ?? []).map((x) => x.id),
+    totalVotes: c.totalVotes,
+    rewards: c.rewards ?? [],
+  };
+}
+
+import { useEffect, useState } from "react";
+import {
+  listContests as apiListContests,
+  type ApiContest,
+  type ApiContestant,
+} from "./lib/api";
+
+export interface LiveData {
+  contestants: Contestant[];
+  contests: Contest[];
+  loading: boolean;
+  error: string | null;
+  /** True when the backend is unreachable and seed data is being shown. */
+  usingFallback: boolean;
+  /** Re-fetch from the backend (call after voting/signing up). */
+  refresh: () => void;
+}
+
+/**
+ * Fetches contests + contestants from the backend.
+ * Falls back to the static seed data above when the API is unreachable,
+ * so the UI keeps working in offline/demo mode.
+ */
+export function useLiveData(): LiveData {
+  const [state, setState] = useState<LiveData>({
+    contestants,
+    contests,
+    loading: true,
+    error: null,
+    usingFallback: false,
+    refresh: () => {},
+  });
+
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const { contests: apiContests } = await apiListContests();
+        if (cancelled) return;
+        const mappedContests = apiContests.map((c, i) => mapApiContest(c, i));
+        const mappedContestants = apiContests
+          .flatMap((c) => c.contestants ?? [])
+          .sort((a, b) => b.votes - a.votes)
+          .map(mapApiContestant);
+        setState({
+          contestants: mappedContestants.length ? mappedContestants : contestants,
+          contests: mappedContests.length ? mappedContests : contests,
+          loading: false,
+          error: null,
+          usingFallback: false,
+          refresh: () => setTick((t) => t + 1),
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setState((s) => ({
+          ...s,
+          loading: false,
+          usingFallback: true,
+          error: err instanceof Error ? err.message : "API unavailable",
+          refresh: () => setTick((t) => t + 1),
+        }));
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
+  return state;
+}
+
 export const formatNaira = (n: number) =>
   "₦" + n.toLocaleString("en-NG", { maximumFractionDigits: 0 });
 
-// Back-compat export used by the profile view
+// Keep a stable reference that components can use for the "current" contestant
+// while offline. Live data flows through useLiveData()/App state instead.
 export const contestant = contestants[0];
 
 export const supporters: Supporter[] = [

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { UserPlus, ChevronLeft, Camera, Sparkles } from "lucide-react";
 import type { Contestant } from "../data";
+import { register, listContests, submitContestant } from "../lib/api";
 import "./SignUp.css";
 
 interface SignUpProps {
@@ -19,6 +20,7 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    password: "",
     phone: "",
     state: "",
     occupation: "",
@@ -28,6 +30,7 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
     photo: "",
   });
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const set =
     (k: keyof typeof form) =>
@@ -38,33 +41,80 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
     ) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.state.trim()) {
       setError("Name, email and state are required.");
       return;
     }
-    const id = Math.floor(Math.random() * 100000);
-    const hero = form.photo.trim() || HERO_POOL[id % HERO_POOL.length];
-    const contestant: Contestant = {
-      id,
-      number: 1 + (id % 40),
-      name: form.name.trim(),
-      state: form.state.trim(),
-      age: Number(form.age) || 21,
-      occupation: form.occupation.trim() || "Contestant",
-      bio:
-        form.bio.trim() ||
-        "New contestant on Rivalry — vote to push me to the top!",
-      heroImage: hero,
-      gallery: [hero],
-      votes: 0,
-      voteGoal: 25000,
-      rank: 5,
-      prize: 50000,
-      votingEndsAt: Date.now() + 2 * 24 * 3600 * 1000,
-    };
-    onComplete(contestant);
+    if (!form.password || form.password.length < 6) {
+      setError("Password is required (at least 6 characters).");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      // 1. Create the user account (stores a JWT for future API calls)
+      await register({
+        email: form.email.trim(),
+        password: form.password,
+        fullName: form.name.trim(),
+      });
+
+      // 2. Create the contestant record under the first live contest
+      const { contests } = await listContests();
+      const contest =
+        contests.find((c) => c.status === "voting-live") ?? contests[0];
+
+      let created = null;
+      if (contest) {
+        const res = await submitContestant(contest.id, {
+          number: 1 + (Math.floor(Math.random() * 100000) % 40),
+          name: form.name.trim(),
+          state: form.state.trim(),
+          age: Number(form.age) || 21,
+          occupation: form.occupation.trim() || "Contestant",
+          bio:
+            form.bio.trim() ||
+            "New contestant on Rivalry — vote to push me to the top!",
+          heroImage: form.photo.trim() || HERO_POOL[0],
+          gallery: form.photo.trim() ? [form.photo.trim()] : [],
+          voteGoal: 25000,
+          votingEndsAt: new Date(
+            Date.now() + 2 * 24 * 3600 * 1000,
+          ).toISOString(),
+        });
+        created = res.contestant;
+      }
+
+      const id = Math.floor(Math.random() * 100000);
+      const hero =
+        created?.heroImage || form.photo.trim() || HERO_POOL[id % HERO_POOL.length];
+      const contestant: Contestant = {
+        id,
+        apiId: created?.id,
+        number: created?.number ?? 1 + (id % 40),
+        name: form.name.trim(),
+        state: form.state.trim(),
+        age: Number(form.age) || 21,
+        occupation: form.occupation.trim() || "Contestant",
+        bio:
+          form.bio.trim() ||
+          "New contestant on Rivalry — vote to push me to the top!",
+        heroImage: hero,
+        gallery: [hero],
+        votes: 0,
+        voteGoal: 25000,
+        rank: 5,
+        prize: 50000,
+        votingEndsAt: Date.now() + 2 * 24 * 3600 * 1000,
+      };
+      onComplete(contestant);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -121,6 +171,13 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
           />
           <input
             className="signup__input"
+            placeholder="Password *"
+            type="password"
+            value={form.password}
+            onChange={set("password")}
+          />
+          <input
+            className="signup__input"
             placeholder="Phone"
             value={form.phone}
             onChange={set("phone")}
@@ -159,9 +216,9 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
         />
 
         {error && <p className="signup__error">{error}</p>}
-        <button className="signup__submit" type="submit">
+        <button className="signup__submit" type="submit" disabled={submitting}>
           <UserPlus size={18} />
-          Create my profile
+          {submitting ? "Creating profile..." : "Create my profile"}
         </button>
         <p className="signup__note">
           After signup you'll get a personal share link so anyone can vote for

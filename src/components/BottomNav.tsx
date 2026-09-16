@@ -1,5 +1,5 @@
 import "./BottomNav.css";
-import { Home, Trophy, Swords, User, Gift } from "lucide-react";
+import { Home, Trophy, Swords, User } from "lucide-react";
 
 export type Tab = "dashboard" | "contests" | "leaderboard" | "earn" | "signup" | "profile";
 
@@ -12,7 +12,6 @@ const items: { key: Tab; Icon: typeof Home; label: string }[] = [
   { key: "dashboard", Icon: Home, label: "Home" },
   { key: "contests", Icon: Swords, label: "Contests" },
   { key: "leaderboard", Icon: Trophy, label: "Ranks" },
-  { key: "earn", Icon: Gift, label: "Earn" },
   { key: "profile", Icon: User, label: "Profile" },
 ];
 

@@ -3,8 +3,38 @@
 }
 
 .dashboard__header {
-  text-align: center;
   margin-bottom: 24px;
+}
+
+.dashboard__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: center;
+}
+
+.dashboard__header-row > div {
+  flex: 1;
+}
+
+.dashboard__earn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 7px 14px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.08);
+  color: var(--gold-light);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard__earn:active {
+  background: rgba(212, 175, 55, 0.2);
 }
 
 .dashboard__title {

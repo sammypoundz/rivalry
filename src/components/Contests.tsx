@@ -1,6 +1,6 @@
 import "./Contests.css";
-import { useState } from "react";
-import { contests, contestants, formatNaira, type Contest } from "../data";
+import { useEffect, useRef, useState } from "react";
+import { contests as seedContests, formatNaira, type Contest, type Contestant } from "../data";
 import {
   ChevronLeft,
   Users,
@@ -12,15 +12,23 @@ import {
   CheckCircle2,
   X,
   Sparkles,
+  ImagePlus,
+  Loader2,
+  Crown,
 } from "lucide-react";
+import { useAuth } from "../auth/AuthProvider";
+import { getMyContestants, submitContestant, uploadImage } from "../lib/api";
 
 interface ContestsProps {
   contest: Contest | null;
   onOpen: (c: Contest) => void;
   onBack: () => void;
   onSelect: (id: number) => void;
-  joinedContestId: number | null;
-  onJoin: (contestId: number) => void;
+  /** Backend ids of contests the logged-in user has entered. */
+  joinedContestIds: string[];
+  /** Called after a successful join so the app can refresh everywhere. */
+  onJoined: () => void;
+  allContestants: Contestant[];
 }
 
 const fmtLeft = (endsAt: number) => {
@@ -37,17 +45,20 @@ export default function Contests({
   onOpen,
   onBack,
   onSelect,
-  joinedContestId,
-  onJoin,
+  joinedContestIds,
+  onJoined,
+  allContestants,
 }: ContestsProps) {
+  const list = seedContests;
   if (contest)
     return (
       <ContestDetail
         contest={contest}
         onBack={onBack}
         onSelect={onSelect}
-        joined={joinedContestId === contest.id}
-        onJoin={() => onJoin(contest.id)}
+        joined={joinedContestIds.includes(contest.apiId ?? "__none__")}
+        onJoined={onJoined}
+        allContestants={allContestants}
       />
     );
 
@@ -58,7 +69,7 @@ export default function Contests({
         Pick a contest, rally support, and win big.
       </p>
       <div className="contests-page__grid">
-        {contests.map((c) => (
+        {list.map((c) => (
           <button key={c.id} className="contest-card" onClick={() => onOpen(c)}>
             <div className="contest-card__media">
               <img src={c.coverImage} alt={c.title} loading="lazy" />
@@ -84,7 +95,7 @@ export default function Contests({
               <p className="contest-card__tagline">{c.tagline}</p>
               <div className="contest-card__meta">
                 <span>
-                  <Users size={13} /> {c.contestantIds.length} contestants
+                  <Users size={13} /> {(c.contestantApiIds?.length ?? c.contestantIds.length)} contestants
                 </span>
                 <span>
                   <Vote size={13} /> {c.totalVotes.toLocaleString()} votes
@@ -110,18 +121,26 @@ function ContestDetail({
   onBack,
   onSelect,
   joined,
-  onJoin,
+  onJoined,
+  allContestants,
 }: {
   contest: Contest;
   onBack: () => void;
   onSelect: (id: number) => void;
   joined: boolean;
-  onJoin: () => void;
+  onJoined: () => void;
+  allContestants: Contestant[];
 }) {
   const [showJoin, setShowJoin] = useState(false);
-  const list = contestants
-    .filter((c) => contest.contestantIds.includes(c.id))
-    .sort((a, b) => b.votes - a.votes);
+  // Live roster: when the contest knows its backend contestant ids, filter the
+  // live contestant list by them; fall back to numeric-id matching for seed data.
+  const list = (
+    contest.contestantApiIds?.length
+      ? allContestants.filter((c) =>
+          c.apiId ? contest.contestantApiIds!.includes(c.apiId) : false,
+        )
+      : allContestants.filter((c) => contest.contestantIds.includes(c.id))
+  ).sort((a, b) => b.votes - a.votes);
 
   return (
     <main className="contest-detail">
@@ -163,7 +182,7 @@ function ContestDetail({
           contest={contest}
           onClose={() => setShowJoin(false)}
           onDone={() => {
-            onJoin();
+            onJoined();
             setShowJoin(false);
           }}
         />
@@ -245,12 +264,111 @@ function JoinFlow({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [step, setStep] = useState(1);
-  const [name, setName] = useState("");
+  const { user } = useAuth();
+  const [step, setStep] = useState(1); // 1 details · 2 images · 3 confirm
+  const [name, setName] = useState(user?.fullName ?? "");
   const [state, setState] = useState("");
   const [occupation, setOccupation] = useState("");
+  const [age, setAge] = useState("");
+  const [bio, setBio] = useState("");
 
-  const valid = name.trim() && state.trim() && occupation.trim();
+  // Images: picked from the user's existing gallery or uploaded from device
+  const [cover, setCover] = useState<string | null>(null); // hero/cover photo
+  const [gallery, setGallery] = useState<string[]>([]); // extra photos
+  const [existing, setExisting] = useState<string[]>([]); // gallery in the app
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load the user's existing photos (across all their contestant entries)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    getMyContestants()
+      .then((res) => {
+        if (cancelled) return;
+        const urls = res.contestants
+          .flatMap((c) => [c.heroImage, ...(c.gallery ?? [])])
+          .filter((u) => !!u);
+        setExisting(Array.from(new Set(urls)));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const valid =
+    name.trim() && state.trim() && occupation.trim() && Number(age) > 0 && cover;
+
+  const handleUpload = async (file: File) => {
+    if (uploading) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image too large — max 2MB");
+      return;
+    }
+    setError("");
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await uploadImage(dataUrl);
+      setExisting((e) => [res.url, ...e]);
+      if (!cover) setCover(res.url);
+      else setGallery((g) => [...g, res.url]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const toggleExtra = (url: string) => {
+    setGallery((g) =>
+      g.includes(url) ? g.filter((x) => x !== url) : [...g, url],
+    );
+  };
+
+  const submitJoin = async () => {
+    if (submitting || !valid || !contest.apiId) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitContestant(contest.apiId, {
+        number: 1 + (Math.floor(Math.random() * 100000) % 100),
+        name: name.trim(),
+        state: state.trim(),
+        age: Number(age) || 21,
+        occupation: occupation.trim() || "Contestant",
+        bio: bio.trim() || "New contestant on Rivalry — vote to push me to the top!",
+        heroImage: cover,
+        gallery: gallery,
+        voteGoal: 25000,
+        votingEndsAt: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not join the contest");
+      setSubmitting(false);
+    }
+  };
+
+  const stepDots = (
+    <div className="join-flow__progress">
+      {[1, 2, 3].map((n) => (
+        <span
+          key={n}
+          className={`join-flow__dot${step >= n ? " join-flow__dot--active" : ""}`}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="join-flow__overlay" onClick={onClose}>
@@ -262,12 +380,10 @@ function JoinFlow({
         <h2 className="join-flow__title">Join {contest.title}</h2>
         <p className="join-flow__sub">Top prize {formatNaira(contest.rewards[0].amount)}</p>
 
+        {/* Step 1 — contestant details */}
         {step === 1 && (
           <div className="join-flow__body">
-            <div className="join-flow__progress">
-              <span className="join-flow__dot join-flow__dot--active" />
-              <span className="join-flow__dot" />
-            </div>
+            {stepDots}
             <label className="join-flow__field">
               Full name
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Amara Okafor" />
@@ -284,24 +400,130 @@ function JoinFlow({
                 placeholder="e.g. Architect & Model"
               />
             </label>
-            <button className="join-flow__next" disabled={!valid} onClick={() => setStep(2)}>
-              Continue
+            <label className="join-flow__field">
+              Age
+              <input
+                type="number"
+                min={16}
+                max={80}
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="e.g. 24"
+              />
+            </label>
+            <label className="join-flow__field">
+              Short bio (optional)
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder="Tell voters what you're about…"
+              />
+            </label>
+            <button className="join-flow__next" disabled={!name.trim() || !state.trim() || !occupation.trim() || !Number(age)} onClick={() => setStep(2)}>
+              Continue to photos
             </button>
           </div>
         )}
 
+        {/* Step 2 — choose cover + gallery images */}
         {step === 2 && (
           <div className="join-flow__body">
-            <div className="join-flow__progress">
-              <span className="join-flow__dot join-flow__dot--active" />
-              <span className="join-flow__dot join-flow__dot--active" />
+            {stepDots}
+
+            <p className="join-flow__label">Cover photo (your main image)</p>
+            {cover ? (
+              <div className="join-flow__cover-preview">
+                <img src={cover} alt="Cover" />
+                <button onClick={() => setCover(null)}>Change</button>
+              </div>
+            ) : (
+              <p className="join-flow__hint">Pick one below or upload from your device.</p>
+            )}
+
+            <p className="join-flow__label">Your gallery in the app</p>
+            {existing.length === 0 && !uploading && (
+              <p className="join-flow__hint">
+                No photos yet — upload one from your device below.
+              </p>
+            )}
+            <div className="join-flow__photo-grid">
+              {existing.map((url) => (
+                <button
+                  key={url.slice(-40)}
+                  className={`join-flow__photo${cover === url ? " is-cover" : ""}${gallery.includes(url) ? " is-picked" : ""}`}
+                  onClick={() => {
+                    if (cover === url) {
+                      setCover(null);
+                    } else if (gallery.includes(url)) {
+                      toggleExtra(url);
+                    } else if (!cover) {
+                      setCover(url);
+                    } else {
+                      toggleExtra(url);
+                    }
+                  }}
+                >
+                  <img src={url} alt="" loading="lazy" />
+                  {cover === url && (
+                    <span className="join-flow__photo-tag">
+                      <Crown size={11} /> Cover
+                    </span>
+                  )}
+                  {cover !== url && gallery.includes(url) && (
+                    <span className="join-flow__photo-tag">
+                      <CheckCircle2 size={11} /> Added
+                    </span>
+                  )}
+                </button>
+              ))}
+              <button
+                className="join-flow__photo join-flow__photo--add"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? <Loader2 size={20} className="join-flow__spin" /> : <ImagePlus size={20} />}
+                <span>{uploading ? "Uploading…" : "Upload from device"}</span>
+              </button>
             </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleUpload(f);
+              }}
+            />
+
+            {gallery.length > 0 && (
+              <p className="join-flow__hint">
+                {gallery.length} extra photo{gallery.length > 1 ? "s" : ""} will be added to your gallery.
+              </p>
+            )}
+
+            {error && <p className="join-flow__error">{error}</p>}
+            <button className="join-flow__next" disabled={!cover || uploading} onClick={() => setStep(3)}>
+              Continue
+            </button>
+            <button className="join-flow__backlink" onClick={() => setStep(1)}>
+              Edit details
+            </button>
+          </div>
+        )}
+
+        {/* Step 3 — confirm & join */}
+        {step === 3 && (
+          <div className="join-flow__body">
+            {stepDots}
             <div className="join-flow__summary">
               <div>
                 <strong>{name}</strong>
                 <span>{state}</span>
-                <span>{occupation}</span>
+                <span>{occupation} · {age} yrs</span>
               </div>
+              {cover && <img className="join-flow__summary-img" src={cover} alt="" />}
               <div className="join-flow__summary-contest">
                 <span>{contest.category}</span>
                 <strong>{contest.title}</strong>
@@ -319,11 +541,20 @@ function JoinFlow({
             <div className="join-flow__rules">
               <CheckCircle2 size={14} /> Rewards are paid out in naira at contest end
             </div>
-            <button className="join-flow__next" onClick={onDone}>
-              <Sparkles size={15} /> Confirm &amp; Join Contest
+            {error && <p className="join-flow__error">{error}</p>}
+            <button className="join-flow__next" disabled={submitting} onClick={submitJoin}>
+              {submitting ? (
+                <>
+                  <Loader2 size={15} className="join-flow__spin" /> Joining…
+                </>
+              ) : (
+                <>
+                  <Sparkles size={15} /> Confirm &amp; Join Contest
+                </>
+              )}
             </button>
-            <button className="join-flow__backlink" onClick={() => setStep(1)}>
-              Edit details
+            <button className="join-flow__backlink" onClick={() => setStep(2)}>
+              Change photos
             </button>
           </div>
         )}

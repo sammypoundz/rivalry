@@ -1,0 +1,217 @@
+.myspace {
+  margin: 22px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.myspace--loading {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--grey, #999);
+  font-size: 0.85rem;
+  padding: 30px 0;
+}
+
+.myspace__spinner {
+  animation: myspace-spin 0.8s linear infinite;
+}
+
+@keyframes myspace-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.myspace__section {
+  background: var(--black-soft, #141414);
+  border: 1px solid rgba(212, 175, 55, 0.12);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.myspace__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold, #d4af37);
+  margin: 0 0 12px;
+}
+
+.myspace__title-sub {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--grey, #999);
+}
+
+.myspace__empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--grey, #999);
+  font-size: 0.82rem;
+  padding: 8px 2px;
+}
+
+.myspace__empty svg {
+  flex-shrink: 0;
+  color: var(--gold, #d4af37);
+}
+
+.myspace__empty p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Contests entered */
+.myspace__contests {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.myspace-contest {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.12);
+}
+
+.myspace-contest img {
+  width: 54px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.myspace-contest__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.myspace-contest__info strong {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.myspace-contest__info span {
+  font-size: 0.7rem;
+  color: var(--grey, #999);
+}
+
+.myspace-contest__pick {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--grey, #999);
+  cursor: pointer;
+}
+
+.myspace-contest__pick.is-active {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: var(--gold, #d4af37);
+  color: var(--gold, #d4af37);
+}
+
+/* Gallery */
+.myspace__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.myspace__cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.myspace__cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.myspace__delete {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(229, 72, 77, 0.6);
+  color: #e5484d;
+  cursor: pointer;
+}
+
+.myspace__delete:hover {
+  background: #e5484d;
+  color: #fff;
+}
+
+.myspace__add {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(212, 175, 55, 0.06);
+  border: 1px dashed rgba(212, 175, 55, 0.35);
+  color: var(--gold, #d4af37);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.myspace__add:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.myspace__notice {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  color: #3ddc84;
+}
+
+.myspace__error {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  color: #e5484d;
+}
+
+.myspace__hint {
+  margin: 12px 0 0;
+  font-size: 0.68rem;
+  color: var(--grey, #999);
+}

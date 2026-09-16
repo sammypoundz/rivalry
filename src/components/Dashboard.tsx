@@ -1,23 +1,35 @@
 import { contestants, type Contestant, type Contest } from "../data";
-import { Swords, ChevronRight } from "lucide-react";
+import { Swords, ChevronRight, Gift } from "lucide-react";
+import { useAuth } from "../auth/AuthProvider";
+import MySpace from "./MySpace";
 import "./Dashboard.css";
 
 interface DashboardProps {
   onSelect: (contestant: Contestant) => void;
   joinedContest: Contest | null;
   onOpenContest: (contest: Contest) => void;
+  onEarn: () => void;
 }
 
 const medals = ["🥇", "🥈", "🥉"];
 
-export default function Dashboard({ onSelect, joinedContest, onOpenContest }: DashboardProps) {
+export default function Dashboard({ onSelect, joinedContest, onOpenContest, onEarn }: DashboardProps) {
+  const { user } = useAuth();
   const ranked = [...contestants].sort((a, b) => b.votes - a.votes);
 
   return (
     <div className="dashboard">
       <header className="dashboard__header">
-        <h1 className="dashboard__title">Rivalry</h1>
-        <p className="dashboard__subtitle">Season 1 — Vote for your queen</p>
+        <div className="dashboard__header-row">
+          <div>
+            <h1 className="dashboard__title">Rivalry</h1>
+            <p className="dashboard__subtitle">Season 1 — Vote for your queen</p>
+          </div>
+          <button className="dashboard__earn" onClick={onEarn}>
+            <Gift size={16} strokeWidth={2.1} />
+            Earn
+          </button>
+        </div>
       </header>
 
       {joinedContest && (
@@ -35,6 +47,8 @@ export default function Dashboard({ onSelect, joinedContest, onOpenContest }: Da
           <ChevronRight size={18} />
         </button>
       )}
+
+      {user && <MySpace />}
 
       {/* Leaderboard */}
       <section className="dashboard__section">

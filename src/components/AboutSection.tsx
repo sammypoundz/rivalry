@@ -1,7 +1,7 @@
-import { contestant } from "../data";
+import type { Contestant } from "../data";
 import "./AboutSection.css";
 
-export default function AboutSection() {
+export default function AboutSection({ contestant }: { contestant: Contestant }) {
   return (
     <section className="about">
       <h2 className="about__title">About</h2>
