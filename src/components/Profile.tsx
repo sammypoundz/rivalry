@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { LogOut } from "lucide-react";
 import type { Contestant } from "../data";
 import { getContestant } from "../lib/api";
-import { useAuth } from "../auth/AuthProvider";
 import VoteModal from "./VoteModal";
 import HeroHeader from "./HeroHeader";
 import IdentitySection from "./IdentitySection";
@@ -23,7 +21,6 @@ interface ProfileProps {
 }
 
 export default function Profile({ contestant, onBack }: ProfileProps) {
-  const { user, signOut } = useAuth();
   const [votes, setVotes] = useState(contestant.votes);
   const [showVoteModal, setShowVoteModal] = useState(false);
   const [likedByMe, setLikedByMe] = useState(false);
@@ -77,15 +74,6 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
       <Supporters contestantId={contestant.apiId ?? String(contestant.id)} />
       <ShareProfile contestantId={contestant.id} contestantName={contestant.name} />
       <div className="app__footer-spacer" />
-      {user && (
-        <button
-          className="profile__logout"
-          onClick={signOut}
-          aria-label="Log out"
-        >
-          <LogOut size={15} /> Log out
-        </button>
-      )}
       <StickyVoteBar votes={votes} onVote={handleVote} />
       {showVoteModal && (
         <VoteModal

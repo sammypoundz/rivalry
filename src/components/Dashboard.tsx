@@ -1,7 +1,5 @@
 import { contestants, type Contestant, type Contest } from "../data";
 import { Swords, ChevronRight, Gift } from "lucide-react";
-import { useAuth } from "../auth/AuthProvider";
-import MySpace from "./MySpace";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -14,7 +12,6 @@ interface DashboardProps {
 const medals = ["🥇", "🥈", "🥉"];
 
 export default function Dashboard({ onSelect, joinedContest, onOpenContest, onEarn }: DashboardProps) {
-  const { user } = useAuth();
   const ranked = [...contestants].sort((a, b) => b.votes - a.votes);
 
   return (
@@ -47,8 +44,6 @@ export default function Dashboard({ onSelect, joinedContest, onOpenContest, onEa
           <ChevronRight size={18} />
         </button>
       )}
-
-      {user && <MySpace />}
 
       {/* Leaderboard */}
       <section className="dashboard__section">

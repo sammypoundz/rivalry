@@ -230,6 +230,18 @@ export async function getMyContestants() {
   );
 }
 
+export interface ApiMyStats {
+  contestsJoined: number;
+  totalVotes: number;
+  totalLikes: number;
+  totalPhotos: number;
+}
+
+/** Aggregate totals across all of the user's contestant entries. */
+export async function getMyStats() {
+  return request<{ success: true; stats: ApiMyStats }>("/users/me/stats");
+}
+
 export async function addGalleryImage(contestantId: string, image: string) {
   return request<{ success: true; gallery: string[] }>(
     `/contestants/${contestantId}/gallery`,

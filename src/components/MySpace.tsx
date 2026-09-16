@@ -8,7 +8,7 @@ import {
 } from "../lib/api";
 import "./MySpace.css";
 
-export default function MySpace() {
+export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: ApiMyContestant["contest"]) => void }) {
   const [mine, setMine] = useState<ApiMyContestant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +38,11 @@ export default function MySpace() {
   }, []);
 
   const active = mine.find((c) => c.id === activeId) ?? mine[0] ?? null;
+
+  /** Every photo across all entries, tagged with its owner contestant. */
+  const allPhotos = mine.flatMap((c) =>
+    (c.gallery ?? []).map((img) => ({ img, contestantId: c.id })),
+  );
 
   const flash = (msg: string) => {
     setNotice(msg);
@@ -70,6 +75,35 @@ export default function MySpace() {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  /** Delete a photo from any of my entries (not just the selected one). */
+  const handleDeleteAcross = async (contestantId: string, image: string) => {
+    const owner = mine.find((c) => c.id === contestantId);
+    if (!owner) return;
+    const prev = owner.gallery;
+    setMine((list) =>
+      list.map((c) =>
+        c.id === contestantId
+          ? { ...c, gallery: prev.filter((g) => g !== image) }
+          : c,
+      ),
+    );
+    try {
+      const res = await removeGalleryImage(contestantId, image);
+      setMine((list) =>
+        list.map((c) =>
+          c.id === contestantId ? { ...c, gallery: res.gallery } : c,
+        ),
+      );
+    } catch (err) {
+      setMine((list) =>
+        list.map((c) =>
+          c.id === contestantId ? { ...c, gallery: prev } : c,
+        ),
+      );
+      flash(err instanceof Error ? err.message : "Delete failed");
     }
   };
 
@@ -132,7 +166,13 @@ export default function MySpace() {
         </h2>
         <div className="myspace__contests">
           {mine.map((c) => (
-            <div key={c.id} className="myspace-contest">
+            <div
+              key={c.id}
+              className="myspace-contest"
+              role={onOpenContest ? "button" : undefined}
+              style={onOpenContest ? { cursor: "pointer" } : undefined}
+              onClick={onOpenContest ? () => onOpenContest(c.contest) : undefined}
+            >
               <img src={c.contest.coverImage} alt="" loading="lazy" />
               <div className="myspace-contest__info">
                 <strong>{c.contest.title}</strong>
@@ -156,7 +196,7 @@ export default function MySpace() {
         </div>
       </section>
 
-      {/* Gallery */}
+      {/* Gallery — every photo across all of my entries */}
       <section className="myspace__section">
         <h2 className="myspace__title">
           <ImagePlus size={14} /> My Gallery
@@ -164,6 +204,25 @@ export default function MySpace() {
         </h2>
         {notice && <p className="myspace__notice">{notice}</p>}
         {error && <p className="myspace__error">{error}</p>}
+
+        {/* Every uploaded photo across all entries — deletable */}
+        {allPhotos.length > 0 && (
+          <div className="myspace__grid">
+            {allPhotos.map(({ img, contestantId }) => (
+              <div key={img.slice(-24) + contestantId} className="myspace__cell">
+                <img src={img} alt="" />
+                <button
+                  className="myspace__delete"
+                  aria-label="Delete photo"
+                  onClick={() => handleDeleteAcross(contestantId, img)}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {active && (
           <>
             <div className="myspace__grid">

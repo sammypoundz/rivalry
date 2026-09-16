@@ -13,6 +13,7 @@ import ScrollSticker from "./components/ScrollSticker";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import AuthOverlay from "./auth/AuthOverlay";
 import { getMyContestants } from "./lib/api";
+import UserProfile from "./components/UserProfile";
 import "./App.css";
 
 function AppShell() {
@@ -40,6 +41,7 @@ function MainApp() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [selected, setSelected] = useState<Contestant | null>(null);
   const [openContest, setOpenContest] = useState<Contest | null>(null);
+  const [viewingProfile, setViewingProfile] = useState(false);
   const [joinedContestIds, setJoinedContestIds] = useState<string[]>([]);
   const [prevTab, setPrevTab] = useState<Tab>("dashboard");
   const [extraContestants, setExtraContestants] = useState<Contestant[]>([]);
@@ -77,6 +79,7 @@ function MainApp() {
         const c = contestantsList.find((x) => x.id === Number(m[1]));
         if (c) {
           setSelected(c);
+          setViewingProfile(true);
           setTab("profile");
           return true;
         }
@@ -112,6 +115,7 @@ function MainApp() {
 
   const openProfile = (c: Contestant) => {
     setSelected(c);
+    setViewingProfile(true);
     setTab("profile");
   };
 
@@ -149,6 +153,7 @@ function MainApp() {
           joinedContestIds={joinedContestIds}
           onJoined={() => live.refresh()}
           allContestants={allContestants}
+          contests={contests}
           onSelect={(id) => {
             const c = allContestants.find((x) => x.id === id);
             if (c) openProfile(c);
@@ -162,29 +167,50 @@ function MainApp() {
           onComplete={(c) => {
             setExtraContestants((list) => [...list, c]);
             setSelected(c);
+            setViewingProfile(true);
             setTab("profile");
           }}
         />
       )}
       {tab === "earn" && <Earn />}
-      {tab === "profile" && (
+      {tab === "profile" && viewingProfile && selected && (
         <Profile
-          key={selected?.id ?? "none"}
-          contestant={selected ?? allContestants[0]}
-          onBack={() => setTab(prevTab)}
+          key={selected.id}
+          contestant={selected}
+          onBack={() => {
+            setViewingProfile(false);
+            setTab(prevTab);
+          }}
+        />
+      )}
+      {tab === "profile" && !(viewingProfile && selected) && (
+        <UserProfile
+          onOpenContest={(contest) => {
+            // Prefer the live contest object (full roster/rewards); construct a
+            // minimal one as fallback so the detail view still opens.
+            const liveContest = contests.find((c) => c.apiId === contest.id);
+            setOpenContest(
+              liveContest ?? {
+                ...contest,
+                apiId: contest.id,
+                contestantIds: [],
+                rewards: [],
+                totalVotes: 0,
+              } as unknown as Contest,
+            );
+            setTab("contests");
+          }}
         />
       )}
 
-      {tab !== "profile" && (
       <BottomNav
         active={tab}
         onChange={(t) => {
           setTab(t);
+          setViewingProfile(false);
           if (t !== "contests") setOpenContest(null);
-          if (t === "profile") setSelected((s) => s ?? allContestants[0]);
         }}
       />
-      )}
     </>
   );
 }

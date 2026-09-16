@@ -1,6 +1,6 @@
 import "./Contests.css";
 import { useEffect, useRef, useState } from "react";
-import { contests as seedContests, formatNaira, type Contest, type Contestant } from "../data";
+import { formatNaira, type Contest, type Contestant } from "../data";
 import {
   ChevronLeft,
   Users,
@@ -29,6 +29,8 @@ interface ContestsProps {
   /** Called after a successful join so the app can refresh everywhere. */
   onJoined: () => void;
   allContestants: Contestant[];
+  /** Live contests from the backend (falls back to seed data). */
+  contests: Contest[];
 }
 
 const fmtLeft = (endsAt: number) => {
@@ -48,8 +50,9 @@ export default function Contests({
   joinedContestIds,
   onJoined,
   allContestants,
+  contests,
 }: ContestsProps) {
-  const list = seedContests;
+  const list = contests;
   if (contest)
     return (
       <ContestDetail

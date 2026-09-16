@@ -1,0 +1,113 @@
+.userprofile {
+  padding-bottom: 0;
+}
+
+.userprofile__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 20px 0;
+}
+
+.userprofile__avatar {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(212, 175, 55, 0.4);
+  flex-shrink: 0;
+}
+
+.userprofile__avatar--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--black-soft, #141414);
+  color: rgba(212, 175, 55, 0.7);
+}
+
+.userprofile__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.userprofile__name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--white, #fff);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userprofile__contact {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--grey, #999);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userprofile__logout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: rgba(212, 175, 55, 0.9);
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.userprofile__logout:hover {
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.userprofile__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 18px 20px 0;
+}
+
+.userprofile__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--black-soft, #141414);
+  border: 1px solid rgba(212, 175, 55, 0.12);
+  border-radius: 14px;
+  padding: 12px 6px;
+  color: rgba(212, 175, 55, 0.9);
+}
+
+.userprofile__stat strong {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--white, #fff);
+}
+
+.userprofile__stat span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--grey, #999);
+}
+
+@media (max-width: 380px) {
+  .userprofile__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
