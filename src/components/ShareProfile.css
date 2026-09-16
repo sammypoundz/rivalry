@@ -1,0 +1,72 @@
+.share-card {
+  background: var(--black-card);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin: 18px 0;
+}
+
+.share-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold);
+}
+
+.share-card__head h3 {
+  font-size: 15.5px;
+  color: var(--white);
+}
+
+.share-card__sub {
+  font-size: 12.5px;
+  color: var(--grey);
+  line-height: 1.6;
+  margin: 8px 0 14px;
+}
+
+.share-card__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--black-soft);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.share-card__link {
+  flex: 1;
+  font-size: 10.5px;
+  color: var(--gold-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-card__btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.share-card__share {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--black);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 12px;
+  border-radius: 12px;
+}

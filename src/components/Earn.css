@@ -1,0 +1,286 @@
+.earn {
+  padding: 0 18px 40px;
+}
+
+.earn__hero {
+  padding: 26px 0 18px;
+}
+
+.earn__hero h1 {
+  font-size: 22px;
+  letter-spacing: 0.02em;
+}
+
+.earn__hero p {
+  font-size: 12.5px;
+  color: var(--grey);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.earn__panel {
+  background: var(--black-card);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.earn__panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold);
+}
+
+.earn__panel-head h2 {
+  font-size: 15.5px;
+  color: var(--white);
+}
+
+.earn__sub {
+  font-size: 12.5px;
+  color: var(--grey);
+  line-height: 1.6;
+  margin: 8px 0 14px;
+}
+
+.earn__sub strong {
+  color: var(--gold-light);
+}
+
+.earn__code {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.earn__linkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--black-soft);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.earn__linkbox code {
+  flex: 1;
+  font-size: 10.5px;
+  color: var(--gold-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.earn__linkbox button {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.earn__invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.earn__invite input {
+  width: 100%;
+  background: var(--black-soft);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  min-width: 0;
+}
+
+.earn__invite input:focus {
+  border-color: var(--gold);
+}
+
+.earn__invite button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--black);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 13px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.earn__total {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--grey);
+  margin: 14px 0 10px;
+}
+
+.earn__total strong {
+  color: var(--gold-light);
+}
+
+.earn__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.earn__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--black-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.earn__list strong {
+  display: block;
+  font-size: 13px;
+}
+
+.earn__list span {
+  font-size: 11px;
+  color: var(--grey);
+}
+
+.earn__status {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.earn__status--joined {
+  background: rgba(80, 200, 120, 0.15);
+  color: #6fdc9a;
+}
+
+.earn__status--signed-up {
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--gold-light);
+}
+
+.earn__status--invited {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--grey);
+}
+
+.earn__tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.earn__tiers div {
+  flex: 1 1 90px;
+  min-width: 0;
+  background: var(--black-soft);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 12px;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.earn__tiers strong {
+  display: block;
+  color: var(--gold);
+  font-size: 16px;
+}
+
+.earn__tiers span {
+  font-size: 9px;
+  color: var(--grey);
+  display: block;
+}
+
+.earn__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.earn__stats div {
+  flex: 1 1 90px;
+  min-width: 0;
+  background: var(--black-soft);
+  border-radius: 12px;
+  padding: 12px 6px;
+  text-align: center;
+  color: var(--gold);
+}
+
+.earn__stats strong {
+  display: block;
+  color: var(--white);
+  font-size: 12.5px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.earn__stats span {
+  font-size: 9.5px;
+  color: var(--grey);
+}
+
+.earn__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.earn__actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: var(--gold-light);
+}
+
+.earn__actions .earn__payout {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--black);
+  border: none;
+}
+
+.earn__actions .earn__payout:disabled {
+  opacity: 0.45;
+}
+
+.earn__paid {
+  font-size: 11px;
+  color: var(--grey);
+  margin-top: 10px;
+  text-align: center;
+}

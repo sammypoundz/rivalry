@@ -9,6 +9,7 @@ import PhotoGallery from "./PhotoGallery";
 import SupportProgress from "./SupportProgress";
 import Supporters from "./Supporters";
 import StickyVoteBar from "./StickyVoteBar";
+import ShareProfile from "./ShareProfile";
 import "./Profile.css";
 
 interface ProfileProps {
@@ -34,6 +35,7 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
       <PhotoGallery />
       <SupportProgress votes={contestant.votes} goal={contestant.voteGoal} />
       <Supporters />
+      <ShareProfile contestantId={contestant.id} contestantName={contestant.name} />
       <div className="app__footer-spacer" />
       <StickyVoteBar votes={contestant.votes} />
     </div>
