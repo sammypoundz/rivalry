@@ -11,66 +11,71 @@ import {
   Gift,
 } from "lucide-react";
 import { formatNaira, contests } from "../data";
+import { useAuth } from "../auth/AuthProvider";
+import { listReferrals, createReferral, type ApiReferral } from "../lib/api";
+import { useEffect } from "react";
 import "./Earn.css";
 
 /* ---------- Vendor / friend referral (for contestants & users) ---------- */
 
-interface Referral {
-  id: number;
-  name: string;
-  contact: string;
-  status: "Joined" | "Invited" | "Signed up";
-  reward: number;
-}
-
-const seedReferrals: Referral[] = [
-  {
-    id: 1,
-    name: "Konga Foods",
-    contact: "vendor@konga.ng",
-    status: "Joined",
-    reward: 2000,
-  },
-  {
-    id: 2,
-    name: "Slice Beauty Bar",
-    contact: "0803 442 1188",
-    status: "Signed up",
-    reward: 2000,
-  },
-  {
-    id: 3,
-    name: "Tobi Threads",
-    contact: "tobi@mail.com",
-    status: "Invited",
-    reward: 0,
-  },
-];
-
 function VendorReferrals() {
-  const [referrals, setReferrals] = useState<Referral[]>(seedReferrals);
+  const { user } = useAuth();
+  const [referrals, setReferrals] = useState<ApiReferral[]>([]);
+  const [earned, setEarned] = useState(0);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [copied, setCopied] = useState(false);
-  const link = `${window.location.origin}${window.location.pathname}#/join?ref=RV-${referrals.length + 100}`;
+  const [sending, setSending] = useState(false);
 
-  const totalEarned = referrals.reduce((s, r) => s + r.reward, 0);
+  // The referral link carries the current user's id — anyone who signs up
+  // through it is linked to them as a referral on the backend.
+  const link = `${window.location.origin}${window.location.pathname}#/join?ref=${user?.id ?? ""}`;
 
-  const invite = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    listReferrals()
+      .then((res) => {
+        if (cancelled) return;
+        setReferrals(res.referrals);
+        setEarned(res.earned);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const invite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !contact.trim()) return;
-    setReferrals((r) => [
-      {
-        id: Date.now(),
+    if (!name.trim() || !contact.trim() || sending) return;
+    setSending(true);
+    try {
+      const res = await createReferral({
         name: name.trim(),
         contact: contact.trim(),
-        status: "Invited",
-        reward: 0,
-      },
-      ...r,
-    ]);
-    setName("");
-    setContact("");
+      });
+      setReferrals((r) => [res.referral, ...r]);
+      setName("");
+      setContact("");
+    } catch {
+      /* invite stays local-only if the API fails */
+      setReferrals((r) => [
+        {
+          id: `local-${Date.now()}`,
+          name: name.trim(),
+          contact: contact.trim(),
+          status: "Invited",
+          reward: 0,
+          createdAt: new Date().toISOString(),
+        },
+        ...r,
+      ]);
+      setName("");
+      setContact("");
+    } finally {
+      setSending(false);
+    }
   };
 
   const copy = async () => {
@@ -90,8 +95,8 @@ function VendorReferrals() {
         <h2>Refer friends</h2>
       </div>
       <p className="earn__sub">
-        Refer your friends to join this contest and earn up to{" "}
-        <strong>₦2,000</strong> per referral.
+        Refer your friends to join this contest — earn <strong>₦500</strong>{" "}
+        per referral, redeemable once they collect <strong>5 votes</strong>.
       </p>
 
       <div className="earn__linkbox">
@@ -108,14 +113,14 @@ function VendorReferrals() {
           value={contact}
           onChange={(e) => setContact(e.target.value)}
         />
-        <button type="submit">
-          <UserPlus size={15} /> Send invite
+        <button type="submit" disabled={sending}>
+          <UserPlus size={15} /> {sending ? "Sending..." : "Send invite"}
         </button>
       </form>
 
       <div className="earn__total">
         <Gift size={15} /> Referral earnings:{" "}
-        <strong>{formatNaira(totalEarned)}</strong>
+        <strong>{formatNaira(earned)}</strong>
       </div>
 
       <ul className="earn__list">
@@ -126,10 +131,17 @@ function VendorReferrals() {
               <span>{r.contact}</span>
             </div>
             <em
-              className={`earn__status earn__status--${r.status.toLowerCase().replace(" ", "-")}`}
+              className={`earn__status earn__status--${
+                r.status === "Qualified"
+                  ? "joined"
+                  : r.status.toLowerCase().replace(" ", "-")
+              }`}
             >
-              {r.status}
-              {r.reward ? ` · ${formatNaira(r.reward)}` : ""}
+              {r.status === "Qualified"
+                ? `Qualified · ${formatNaira(r.reward)}`
+                : r.status === "Signed up"
+                  ? "Signed up · needs 5 votes"
+                  : r.status}
             </em>
           </li>
         ))}

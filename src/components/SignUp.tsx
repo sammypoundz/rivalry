@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { UserPlus, ChevronLeft, Camera, Sparkles } from "lucide-react";
 import type { Contestant } from "../data";
 import { register, listContests, submitContestant } from "../lib/api";
@@ -32,6 +32,13 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Referral: the signup link may carry ?ref=<userId> (from a contestant's
+  // share link) — the new account is then linked to that referrer.
+  const referrerId = useMemo(() => {
+    const m = window.location.hash.match(/ref=([0-9a-fA-F]{24})/);
+    return m ? m[1] : undefined;
+  }, []);
+
   const set =
     (k: keyof typeof form) =>
     (
@@ -59,6 +66,7 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
         email: form.email.trim(),
         password: form.password,
         fullName: form.name.trim(),
+        referredBy: referrerId,
       });
 
       // 2. Create the contestant record under the first live contest
@@ -78,7 +86,8 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
             form.bio.trim() ||
             "New contestant on Rivalry — vote to push me to the top!",
           heroImage: form.photo.trim() || HERO_POOL[0],
-          gallery: form.photo.trim() ? [form.photo.trim()] : [],
+          // Hero image is NOT duplicated into the gallery (it's rendered once
+          // at the top of the profile) — an empty gallery stays empty.
           voteGoal: 25000,
           votingEndsAt: new Date(
             Date.now() + 2 * 24 * 3600 * 1000,
@@ -102,7 +111,7 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
           form.bio.trim() ||
           "New contestant on Rivalry — vote to push me to the top!",
         heroImage: hero,
-        gallery: [hero],
+        gallery: [], // hero already rendered above the gallery — no duplicates
         votes: 0,
         voteGoal: 25000,
         rank: 5,
@@ -214,6 +223,13 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
           value={form.bio}
           onChange={set("bio")}
         />
+
+        {referrerId && (
+          <p className="signup__note">
+            🎉 You were invited by a Rivalry contestant — your referral will be
+            credited when you join!
+          </p>
+        )}
 
         {error && <p className="signup__error">{error}</p>}
         <button className="signup__submit" type="submit" disabled={submitting}>

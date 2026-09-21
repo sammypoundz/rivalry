@@ -72,7 +72,7 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
       <PhotoGallery contestant={contestant} />
       <SupportProgress votes={votes} goal={contestant.voteGoal} />
       <Supporters contestantId={contestant.apiId ?? String(contestant.id)} />
-      <ShareProfile contestantId={contestant.id} contestantName={contestant.name} />
+      <ShareProfile contestantId={contestant.id} apiId={contestant.apiId} contestantName={contestant.name} />
       <div className="app__footer-spacer" />
       <StickyVoteBar votes={votes} onVote={handleVote} />
       {showVoteModal && (

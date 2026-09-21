@@ -72,8 +72,15 @@ function MainApp() {
   }, [user, live.contests]);
 
   // Shared profile links look like .../#/vote/{id}
+  // Referral join links look like .../#/join?ref={userId}
   const openProfileFromHash = useCallback(
     (contestantsList: Contestant[]) => {
+      const joinM = window.location.hash.match(/^#\/join(\?.*)?$/);
+      if (joinM) {
+        setViewingProfile(false);
+        setTab("signup");
+        return true;
+      }
       const m = window.location.hash.match(/^#\/vote\/(\d+)/);
       if (m) {
         const c = contestantsList.find((x) => x.id === Number(m[1]));

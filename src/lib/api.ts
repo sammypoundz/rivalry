@@ -34,6 +34,8 @@ export async function register(input: {
   phone?: string;
   password: string;
   fullName: string;
+  /** Mongo ObjectId of the user whose referral link was used (optional). */
+  referredBy?: string;
 }) {
   const data = await request<{ success: true; user: ApiUser; token: string }>(
     "/auth/register",
@@ -270,4 +272,36 @@ export async function uploadImages(images: string[]) {
     method: "POST",
     body: JSON.stringify({ images }),
   });
+}
+
+// ---------- Referrals ----------
+
+export interface ApiReferral {
+  id: string;
+  name: string;
+  contact: string;
+  // "Invited" → "Signed up" (needs 5 votes) → "Qualified" (₦500 redeemable)
+  status: "Invited" | "Signed up" | "Qualified" | string;
+  reward: number;
+  contestId?: string | null;
+  createdAt: string;
+}
+
+/** The logged-in user's referral invites + total earnings. */
+export async function listReferrals() {
+  return request<{ success: true; referrals: ApiReferral[]; earned: number }>(
+    "/users/me/referrals",
+  );
+}
+
+/** Record an invite the user sent to someone (name + email/phone). */
+export async function createReferral(input: {
+  name: string;
+  contact: string;
+  contestId?: string;
+}) {
+  return request<{ success: true; referral: ApiReferral }>(
+    "/users/me/referrals",
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }

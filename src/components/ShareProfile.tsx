@@ -4,18 +4,31 @@ import "./ShareProfile.css";
 
 interface ShareProfileProps {
   contestantId: number;
+  /** Real backend id (Mongo ObjectId) — used so the shared link can render an OG preview. */
+  apiId?: string;
   contestantName: string;
 }
 
-export const profileShareLink = (id: number) =>
-  `${window.location.origin}${window.location.pathname}#/vote/${id}`;
+const APP_URL = (import.meta.env.VITE_API_URL as string | undefined)
+  ?.replace(/\/$/, "")
+  .replace(/\/api$/, "") || (/^(localhost|127\.)/.test(window.location.hostname)
+    ? // dev: the OG route lives on the Express backend (Vite only proxies XHR)
+      "http://localhost:5000"
+    : "https://rivalrybackend.onrender.com");
+
+export const profileShareLink = (id: number, apiId?: string) =>
+  apiId
+    ? // Backend OG landing page: rich social preview + deep-link into #/vote/{id}
+      `${APP_URL}/api/og/vote/${apiId}`
+    : `${window.location.origin}${window.location.pathname}#/vote/${id}`;
 
 export default function ShareProfile({
   contestantId,
+  apiId,
   contestantName,
 }: ShareProfileProps) {
   const [copied, setCopied] = useState(false);
-  const link = profileShareLink(contestantId);
+  const link = profileShareLink(contestantId, apiId);
 
   const copy = async () => {
     try {
