@@ -36,3 +36,11 @@
     right: 24px;
   }
 }
+
+/* Mobile: the floating Sign In button is gone — the dashboard header
+   already shows a Sign in button (which becomes Earn once logged in). */
+@media (max-width: 899px) {
+  .preview-signin-btn {
+    display: none;
+  }
+}
