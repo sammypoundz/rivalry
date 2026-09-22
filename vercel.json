@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/og/vote/:id",
+      "destination": "https://rivalrybackend.onrender.com/api/og/vote/:id"
+    },
+    {
+      "source": "/og/vote/:id/image",
+      "destination": "https://rivalrybackend.onrender.com/api/og/vote/:id/image"
+    }
+  ]
+}

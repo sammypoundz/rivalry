@@ -6,3 +6,33 @@
   height: 20px;
 }
 
+
+/* Floating sign-in button shown to anonymous visitors browsing the preview */
+.preview-signin-btn {
+  position: fixed;
+  bottom: 90px; /* sits above the bottom nav on mobile */
+  right: 16px;
+  z-index: 900; /* below the auth overlay (1000+) */
+  padding: 10px 22px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.preview-signin-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.5);
+}
+
+@media (min-width: 900px) {
+  .preview-signin-btn {
+    bottom: 24px;
+    right: 24px;
+  }
+}

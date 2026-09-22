@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { getMyContestants, submitContestant, uploadImage } from "../lib/api";
+import AuthOverlay from "../auth/AuthOverlay";
 
 interface ContestsProps {
   contest: Contest | null;
@@ -135,6 +136,8 @@ function ContestDetail({
   allContestants: Contestant[];
 }) {
   const [showJoin, setShowJoin] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const { user } = useAuth();
   // Live roster: when the contest knows its backend contestant ids, filter the
   // live contestant list by them; fall back to numeric-id matching for seed data.
   const list = (
@@ -173,12 +176,20 @@ function ContestDetail({
               <CheckCircle2 size={14} /> You're competing in this contest
             </span>
           ) : (
-            <button className="join-banner" onClick={() => setShowJoin(true)}>
+            <button className="join-banner" onClick={() => (user ? setShowJoin(true) : setShowAuth(true))}>
               <Sparkles size={14} /> Join this contest
             </button>
           )}
         </div>
       </div>
+
+      {showAuth && (
+        <AuthOverlay
+          dismissible
+          onDismiss={() => setShowAuth(false)}
+          onSuccess={() => setShowAuth(false)}
+        />
+      )}
 
       {showJoin && (
         <JoinFlow

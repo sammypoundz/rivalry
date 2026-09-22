@@ -9,11 +9,14 @@ interface AuthOverlayProps {
   onDismiss?: () => void;
   /** Whether the overlay can be closed without signing in */
   dismissible?: boolean;
+  /** Called after a successful sign-in/sign-up (optional) */
+  onSuccess?: () => void;
 }
 
 export default function AuthOverlay({
   onDismiss,
   dismissible = false,
+  onSuccess,
 }: AuthOverlayProps) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -62,9 +65,10 @@ export default function AuthOverlay({
       } else {
         await signIn(id, form.password);
       }
+      setBusy(false);
+      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
       setBusy(false);
     }
   };

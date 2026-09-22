@@ -40,6 +40,9 @@ function MainApp() {
   const [joinedContestIds, setJoinedContestIds] = useState<string[]>([]);
   const [prevTab, setPrevTab] = useState<Tab>("dashboard");
   const [extraContestants, setExtraContestants] = useState<Contestant[]>([]);
+  // Actions that need a real account (Earn, own Profile, joining a contest)
+  // open the sign-in modal instead of doing the thing when there's no user.
+  const [pendingAuthAction, setPendingAuthAction] = useState<null | "earn" | "profile" | "joinContest">(null);
   const live = useLiveData();
   const { contestants, contests } = live.usingFallback
     ? { contestants: [...seedContestants, ...extraContestants], contests: seedContests }
@@ -130,7 +133,9 @@ function MainApp() {
   }, [allContestants]);
 
   useEffect(() => {
-    if (tab !== "profile") setPrevTab(tab);
+    // Never remember "profile" as the return tab — that key means the user's
+    // OWN profile in the bottom nav, not a contestant profile view.
+    if (tab !== "profile" && tab !== "signup") setPrevTab(tab);
   }, [tab]);
 
   const openProfile = (c: Contestant) => {
@@ -139,14 +144,45 @@ function MainApp() {
     setTab("profile");
   };
 
+  /** Leaving a contestant profile — always back to the homepage. */
+  const closeProfile = () => {
+    setViewingProfile(false);
+    setSelected(null);
+    setTab("dashboard");
+    // Clear a lingering #/vote/{id} hash so the URL matches the screen.
+    // deepLinkVote stays true: a visitor who arrived via a voting link keeps
+    // browsing the homepage without the sign-up wall slamming shut.
+    if (window.location.hash.startsWith("#/vote/")) {
+      history.replaceState(null, "", window.location.pathname);
+    }
+  };
+
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [tab, openContest]);
 
-  // Anonymous regular visitors get the sign-up wall; vote deep links don't.
-  if (!user && !deepLinkVote) {
-    return <AuthOverlay />;
-  }
+  // Anonymous regular visitors get a 10-second free preview of the site, then
+  // the sign-up wall appears. Vote deep links skip the wall entirely, and a
+  // Sign In button lets eager visitors trigger the wall themselves.
+  const [showAuth, setShowAuth] = useState(false);
+  const previewing = !user && !deepLinkVote;
+  useEffect(() => {
+    if (!previewing) {
+      setShowAuth(false);
+      return;
+    }
+    const t = setTimeout(() => setShowAuth(true), 10_000);
+    return () => clearTimeout(t);
+  }, [previewing]);
+
+  // A gated action (earn/profile/join) was tapped while signed out: once the
+  // visitor signs in or creates an account, run the action they were blocked on.
+  useEffect(() => {
+    if (!pendingAuthAction || !user) return;
+    if (pendingAuthAction === "earn") setTab("earn");
+    if (pendingAuthAction === "profile") setTab("profile");
+    setPendingAuthAction(null);
+  }, [user, pendingAuthAction]);
 
   return (
     <>
@@ -167,7 +203,7 @@ function MainApp() {
             setOpenContest(c);
             setTab("contests");
           }}
-          onEarn={() => setTab("earn")}
+          onEarn={() => (user ? setTab("earn") : setPendingAuthAction("earn"))}
         />
       )}
       {tab === "contests" && (
@@ -202,10 +238,7 @@ function MainApp() {
         <Profile
           key={selected.id}
           contestant={selected}
-          onBack={() => {
-            setViewingProfile(false);
-            setTab(prevTab);
-          }}
+          onBack={closeProfile}
         />
       )}
       {tab === "profile" && !(viewingProfile && selected) && (
@@ -230,12 +263,45 @@ function MainApp() {
 
       {!(tab === "profile" && viewingProfile && selected) && (
         <BottomNav
-          active={tab}
+          // A public contestant profile is not the user's own profile —
+          // highlight the tab it was opened from (or Home) instead.
+          active={tab === "profile" && viewingProfile ? prevTab : tab}
           onChange={(t) => {
+            if (!user && (t === "earn" || t === "profile")) {
+              setPendingAuthAction(t);
+              return;
+            }
             setTab(t);
             setViewingProfile(false);
             if (t !== "contests") setOpenContest(null);
           }}
+        />
+      )}
+
+      {/* Preview mode: visitors can open the login wall themselves at any time. */}
+      {previewing && (
+        <button
+          className="preview-signin-btn"
+          onClick={() => setShowAuth(true)}
+        >
+          Sign In
+        </button>
+      )}
+
+      {previewing && showAuth && (
+        <AuthOverlay
+          dismissible
+          onDismiss={() => setShowAuth(false)}
+          onSuccess={() => setShowAuth(false)}
+        />
+      )}
+
+      {/* Gated action tapped while signed out — sign-in modal blocks it. */}
+      {pendingAuthAction && !user && (
+        <AuthOverlay
+          dismissible
+          onDismiss={() => setPendingAuthAction(null)}
+          onSuccess={() => setPendingAuthAction(null)}
         />
       )}
     </>

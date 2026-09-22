@@ -9,17 +9,13 @@ interface ShareProfileProps {
   contestantName: string;
 }
 
-const APP_URL = (import.meta.env.VITE_API_URL as string | undefined)
-  ?.replace(/\/$/, "")
-  .replace(/\/api$/, "") || (/^(localhost|127\.)/.test(window.location.hostname)
-    ? // dev: the OG route lives on the Express backend (Vite only proxies XHR)
-      "http://localhost:5000"
-    : "https://rivalrybackend.onrender.com");
-
+// The share link is built from THIS frontend origin — never the backend URL.
+// The /og/vote/:id path is transparently proxied to the backend's OG route
+// (see vercel.json rewrites in production, the Vite proxy in dev), so social
+// crawlers still get the rich OG preview and visitors still land on #/vote/:id.
 export const profileShareLink = (id: number, apiId?: string) =>
   apiId
-    ? // Backend OG landing page: rich social preview + deep-link into #/vote/{id}
-      `${APP_URL}/api/og/vote/${apiId}`
+    ? `${window.location.origin}/og/vote/${apiId}`
     : `${window.location.origin}${window.location.pathname}#/vote/${id}`;
 
 export default function ShareProfile({

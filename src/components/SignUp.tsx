@@ -86,8 +86,9 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
             form.bio.trim() ||
             "New contestant on Rivalry — vote to push me to the top!",
           heroImage: form.photo.trim() || HERO_POOL[0],
-          // Hero image is NOT duplicated into the gallery (it's rendered once
-          // at the top of the profile) — an empty gallery stays empty.
+          // The signup photo is also seeded into the gallery (the backend does
+          // the same) so the owner can manage it from MySpace.
+          gallery: [form.photo.trim() || HERO_POOL[0]],
           voteGoal: 25000,
           votingEndsAt: new Date(
             Date.now() + 2 * 24 * 3600 * 1000,
@@ -111,7 +112,10 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
           form.bio.trim() ||
           "New contestant on Rivalry — vote to push me to the top!",
         heroImage: hero,
-        gallery: [], // hero already rendered above the gallery — no duplicates
+        // The contestant's own photo lives in the gallery too so it can be
+        // managed (liked/deleted) from MySpace. The public gallery view
+        // filters the hero out, so it never renders twice on the profile.
+        gallery: [hero],
         votes: 0,
         voteGoal: 25000,
         rank: 5,

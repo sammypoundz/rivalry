@@ -9,6 +9,12 @@ export default defineConfig({
         target: "http://localhost:5000",
         changeOrigin: true,
       },
+      // Share links use the frontend origin (/og/vote/:id) — proxy to the
+      // backend OG routes so dev links behave exactly like production.
+      "/og": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
     },
   },
 });

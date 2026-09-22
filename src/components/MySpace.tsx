@@ -4,8 +4,12 @@ import {
   getMyContestants,
   addGalleryImage,
   removeGalleryImage,
+  imageLikesForViewer,
+  likeImage,
   type ApiMyContestant,
 } from "../lib/api";
+import { Lightbox } from "./PhotoGallery";
+import { Heart } from "lucide-react";
 import "./MySpace.css";
 
 export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: ApiMyContestant["contest"]) => void }) {
@@ -39,18 +43,64 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
 
   const active = mine.find((c) => c.id === activeId) ?? mine[0] ?? null;
 
-  /** Every photo across all entries, tagged with its owner contestant.
-   *  De-duplicated by URL so the same photo never shows twice (e.g. it sits
-   *  in two contestants' galleries). Oldest entry wins for deletion. */
-  const allPhotos = Array.from(
-    new Map(
-      mine
-        .flatMap((c) =>
-          (c.gallery ?? []).map((img) => ({ img, contestantId: c.id })),
-        )
-        .map((p) => [p.img, p]),
-    ).values(),
-  );
+  // Like state for my gallery photos (the owner can also like/unlike their
+  // own photos — counts come from the same ImageLike store as the public
+  // profile gallery).
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [likedByMe, setLikedByMe] = useState<Set<string>>(new Set());
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const photos = active?.gallery ?? [];
+    if (!active || photos.length === 0) {
+      setLikeCounts({});
+      setLikedByMe(new Set());
+      return;
+    }
+    let cancelled = false;
+    imageLikesForViewer(active.id, [...photos])
+      .then((res) => {
+        if (cancelled) return;
+        setLikeCounts(res.counts ?? {});
+        setLikedByMe(new Set(res.likedImages ?? []));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [active?.id, active?.gallery.join("|")]);
+
+  const toggleImageLike = async (image: string) => {
+    if (!active) return;
+    const wasLiked = likedByMe.has(image);
+    setLikedByMe((s) => {
+      const next = new Set(s);
+      if (wasLiked) next.delete(image);
+      else next.add(image);
+      return next;
+    });
+    setLikeCounts((c) => ({
+      ...c,
+      [image]: Math.max(0, (c[image] ?? 0) + (wasLiked ? -1 : 1)),
+    }));
+    try {
+      const res = await likeImage(active.id, image);
+      setLikeCounts((c) => ({ ...c, [image]: res.imageLikes }));
+      setLikedByMe((s) => {
+        const next = new Set(s);
+        if (res.liked) next.add(image);
+        else next.delete(image);
+        return next;
+      });
+    } catch {
+      setLikedByMe((s) => {
+        const next = new Set(s);
+        if (wasLiked) next.add(image);
+        else next.delete(image);
+        return next;
+      });
+    }
+  };
 
   const flash = (msg: string) => {
     setNotice(msg);
@@ -86,37 +136,15 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
     }
   };
 
-  /** Delete a photo from any of my entries (not just the selected one). */
-  const handleDeleteAcross = async (contestantId: string, image: string) => {
-    const owner = mine.find((c) => c.id === contestantId);
-    if (!owner) return;
-    const prev = owner.gallery;
-    setMine((list) =>
-      list.map((c) =>
-        c.id === contestantId
-          ? { ...c, gallery: prev.filter((g) => g !== image) }
-          : c,
-      ),
-    );
-    try {
-      const res = await removeGalleryImage(contestantId, image);
-      setMine((list) =>
-        list.map((c) =>
-          c.id === contestantId ? { ...c, gallery: res.gallery } : c,
-        ),
-      );
-    } catch (err) {
-      setMine((list) =>
-        list.map((c) =>
-          c.id === contestantId ? { ...c, gallery: prev } : c,
-        ),
-      );
-      flash(err instanceof Error ? err.message : "Delete failed");
-    }
-  };
-
   const handleDelete = async (image: string) => {
     if (!active || uploading) return;
+    // Ask before removing — a tap on the trash icon must not nuke a photo
+    if (
+      !window.confirm(
+        "Delete this photo from your gallery? This can't be undone.",
+      )
+    )
+      return;
     // Optimistic removal
     const prev = active.gallery;
     setMine((list) =>
@@ -204,7 +232,7 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
         </div>
       </section>
 
-      {/* Gallery — every photo across all of my entries */}
+      {/* Gallery — photos for the currently selected entry */}
       <section className="myspace__section">
         <h2 className="myspace__title">
           <ImagePlus size={14} /> My Gallery
@@ -213,34 +241,37 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
         {notice && <p className="myspace__notice">{notice}</p>}
         {error && <p className="myspace__error">{error}</p>}
 
-        {/* Every uploaded photo across all entries — deletable */}
-        {allPhotos.length > 0 && (
-          <div className="myspace__grid">
-            {allPhotos.map(({ img, contestantId }) => (
-              <div key={img.slice(-24) + contestantId} className="myspace__cell">
-                <img src={img} alt="" />
-                <button
-                  className="myspace__delete"
-                  aria-label="Delete photo"
-                  onClick={() => handleDeleteAcross(contestantId, img)}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
         {active && (
           <>
             <div className="myspace__grid">
-              {active.gallery.map((img) => (
-                <div key={img.slice(-24)} className="myspace__cell">
+              {active.gallery.map((img, i) => (
+                <div
+                  key={img.slice(-24) + i}
+                  className="myspace__cell myspace__cell--viewable"
+                  onClick={() => setViewerIndex(i)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && setViewerIndex(i)}
+                >
                   <img src={img} alt="" />
+                  <button
+                    className={`myspace__like${likedByMe.has(img) ? " myspace__like--on" : ""}`}
+                    aria-label={likedByMe.has(img) ? "Unlike" : "Like"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleImageLike(img);
+                    }}
+                  >
+                    <Heart size={12} fill={likedByMe.has(img) ? "currentColor" : "none"} />
+                    <span>{(likeCounts[img] ?? 0).toLocaleString()}</span>
+                  </button>
                   <button
                     className="myspace__delete"
                     aria-label="Delete photo"
-                    onClick={() => handleDelete(img)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(img);
+                    }}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -276,6 +307,19 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
           </>
         )}
       </section>
+
+      {/* Full-screen viewer with like toggle for my gallery photos */}
+      {viewerIndex !== null && active && active.gallery.length > 0 && (
+        <Lightbox
+          images={active.gallery}
+          startIndex={Math.min(viewerIndex, active.gallery.length - 1)}
+          counts={likeCounts}
+          mine={likedByMe}
+          onLike={toggleImageLike}
+          onClose={() => setViewerIndex(null)}
+          name={active.name}
+        />
+      )}
     </div>
   );
 }

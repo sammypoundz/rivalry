@@ -156,6 +156,33 @@
   display: block;
 }
 
+/* Viewable cells show a pointer + like badge */
+.myspace__cell--viewable {
+  cursor: pointer;
+}
+
+.myspace__like {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.myspace__like--on {
+  color: #ff4d6d;
+}
+
 .myspace__delete {
   position: absolute;
   top: 5px;

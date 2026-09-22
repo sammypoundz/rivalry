@@ -42,3 +42,144 @@
 .gallery__item:hover img {
   transform: scale(1.07);
 }
+
+/* Like badge on each gallery tile */
+.gallery__like {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.gallery__like:active {
+  transform: scale(0.92);
+}
+
+.gallery__like--on {
+  color: #ff4d6d;
+}
+
+.gallery__item:hover .gallery__like {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+/* position: the tile is not relative by default */
+.gallery__item {
+  position: relative;
+}
+
+/* ---------- Lightbox (image viewer) ---------- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: lightbox-in 0.18s ease;
+}
+
+@keyframes lightbox-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lightbox__inner {
+  position: relative;
+  max-width: 92vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lightbox__img {
+  max-width: 92vw;
+  max-height: 74vh;
+  object-fit: contain;
+  border-radius: 14px;
+}
+
+.lightbox__bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.lightbox__like {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.lightbox__like--on {
+  color: #ff4d6d;
+}
+
+.lightbox__like:disabled {
+  cursor: default;
+}
+
+.lightbox__nav {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox__nav:hover,
+.lightbox__like:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.lightbox__close {
+  position: absolute;
+  top: -44px;
+  right: -6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lightbox__count {
+  position: absolute;
+  bottom: -30px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+}

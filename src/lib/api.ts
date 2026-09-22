@@ -86,12 +86,41 @@ export interface ApiSupporter {
   badge: string;
 }
 
+// ---------- Device fingerprint (anonymous visitors) ----------
+/**
+ * A stable per-browser id stored in localStorage, used to key anonymous
+ * likes (gallery photos, hero images) so a visitor sees their own likes
+ * when they revisit, and can't like the same image twice.
+ * Enriched with a few stable screen/locale signals so the id survives
+ * localStorage clears in most cases (same browser, same device).
+ */
+export function getDeviceId(): string {
+  const KEY = "rivalry_device_id";
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    const seed = [
+      navigator.userAgent,
+      navigator.language,
+      `${screen.width}x${screen.height}x${screen.colorDepth}`,
+      new Date().getTimezoneOffset(),
+    ].join("|");
+    let hash = 5381;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash * 33) ^ seed.charCodeAt(i);
+    }
+    id = `fp_${Math.abs(hash).toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("rivalry_token");
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      "X-Device-Id": getDeviceId(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -149,12 +178,36 @@ export async function getContestant(id: string) {
   }>(`/contestants/${id}`);
 }
 
-/** Toggle a like on a contestant. Works for guests (keyed by IP). */
+/** Toggle a like on a contestant. Works for guests (fingerprint/IP keyed). */
 export async function toggleLike(contestantId: string) {
   return request<{ success: true; liked: boolean; likes: number }>(
     `/contestants/${contestantId}/like`,
     { method: "POST" },
   );
+}
+
+// ---------- Gallery image likes ----------
+/** Toggle a like on ONE image (gallery photo or hero). Tap again to unlike. */
+export async function likeImage(contestantId: string, image: string) {
+  return request<{ success: true; liked: boolean; imageLikes: number }>(
+    `/contestants/${contestantId}/gallery/like`,
+    { method: "POST", body: JSON.stringify({ image }) },
+  );
+}
+
+/**
+ * Which of these images has the current visitor already liked, plus the
+ * total like count for each. Works for guests via device fingerprint.
+ */
+export async function imageLikesForViewer(contestantId: string, images: string[]) {
+  return request<{
+    success: true;
+    likedImages: string[];
+    counts: Record<string, number>;
+  }>(`/contestants/${contestantId}/gallery/likes`, {
+    method: "POST",
+    body: JSON.stringify({ images }),
+  });
 }
 
 // POST /api/contests/:contestId/contestants
