@@ -204,6 +204,9 @@ function MainApp() {
             setTab("contests");
           }}
           onEarn={() => (user ? setTab("earn") : setPendingAuthAction("earn"))}
+          // Mobile-only Sign in button (replaces Earn in the dashboard header)
+          // for visitors who aren't logged in yet.
+          onSignIn={user ? undefined : () => setShowAuth(true)}
         />
       )}
       {tab === "contests" && (

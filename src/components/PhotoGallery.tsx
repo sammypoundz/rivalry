@@ -143,6 +143,20 @@ export function Lightbox({
 }) {
   const [index, setIndex] = useState(startIndex);
   const src = images[index];
+  const liked = mine.has(src);
+
+  // The "tap to unlike" hint flashes for a second after liking, then fades
+  // out — the like state itself stays visible.
+  const [hintVisible, setHintVisible] = useState(false);
+  useEffect(() => {
+    if (!liked) {
+      setHintVisible(false);
+      return;
+    }
+    setHintVisible(true);
+    const t = setTimeout(() => setHintVisible(false), 1000);
+    return () => clearTimeout(t);
+  }, [liked, src]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -172,7 +186,13 @@ export function Lightbox({
             onClick={() => onLike(src)}
           >
             <Heart size={18} fill={mine.has(src) ? "currentColor" : "none"} />
-            <span>{mine.has(src) ? "Liked — tap to unlike" : "Like"}</span>
+            <span>{mine.has(src) ? "Liked" : "Like"}</span>
+            <span
+              className={`lightbox__hint${hintVisible ? "" : " lightbox__hint--hide"}`}
+              aria-hidden="true"
+            >
+              tap to unlike
+            </span>
             <strong>{(counts[src] ?? 0).toLocaleString()}</strong>
           </button>
           {index < images.length - 1 && (

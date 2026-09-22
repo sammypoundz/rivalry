@@ -1,5 +1,5 @@
 import { contestants, type Contestant, type Contest } from "../data";
-import { Swords, ChevronRight, Gift } from "lucide-react";
+import { Swords, ChevronRight, Gift, LogIn } from "lucide-react";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -7,11 +7,13 @@ interface DashboardProps {
   joinedContest: Contest | null;
   onOpenContest: (contest: Contest) => void;
   onEarn: () => void;
+  /** Opens the sign-in overlay (shown on mobile in place of the Earn button). */
+  onSignIn?: () => void;
 }
 
 const medals = ["🥇", "🥈", "🥉"];
 
-export default function Dashboard({ onSelect, joinedContest, onOpenContest, onEarn }: DashboardProps) {
+export default function Dashboard({ onSelect, joinedContest, onOpenContest, onEarn, onSignIn }: DashboardProps) {
   const ranked = [...contestants].sort((a, b) => b.votes - a.votes);
 
   return (
@@ -22,6 +24,12 @@ export default function Dashboard({ onSelect, joinedContest, onOpenContest, onEa
             <h1 className="dashboard__title">Rivalry</h1>
             <p className="dashboard__subtitle">Season 1 — Vote for your queen</p>
           </div>
+          {onSignIn ? (
+            <button className="dashboard__signin" onClick={onSignIn}>
+              <LogIn size={16} strokeWidth={2.1} />
+              Sign in
+            </button>
+          ) : null}
           <button className="dashboard__earn" onClick={onEarn}>
             <Gift size={16} strokeWidth={2.1} />
             Earn

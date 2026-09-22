@@ -33,8 +33,37 @@
   cursor: pointer;
 }
 
+.dashboard__signin {
+  display: none; /* mobile-only — replaces the Earn button (see media query) */
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 7px 14px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: var(--gold);
+  color: #1a1206;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard__signin:active {
+  background: var(--gold-light);
+}
+
 .dashboard__earn:active {
   background: rgba(212, 175, 55, 0.2);
+}
+
+/* Mobile: Sign in takes the Earn button's spot in the header */
+@media (max-width: 768px) {
+  .dashboard__earn {
+    display: none;
+  }
+  .dashboard__signin {
+    display: flex;
+  }
 }
 
 .dashboard__title {
