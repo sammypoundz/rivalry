@@ -50,7 +50,9 @@ export default function HeroHeader({
     }
   };
 
-  const shareLink = profileShareLink(1); // hero header shows the default contestant
+  // Build the share link from this contestant's real API id so the OG
+  // preview resolves (falls back to the plain hash link in demo mode).
+  const shareLink = profileShareLink(1, contestantId);
 
   const copyLink = async () => {
     try {
