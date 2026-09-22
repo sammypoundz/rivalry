@@ -17,16 +17,11 @@ import UserProfile from "./components/UserProfile";
 import "./App.css";
 
 function AppShell() {
-  const { user, loading } = useAuth();
-  return (
-    <>
-      {loading ? null : user ? (
-        <MainApp />
-      ) : (
-        <AuthOverlay />
-      )}
-    </>
-  );
+  const { loading } = useAuth();
+  // The app itself works anonymously (voting needs no account). MainApp shows
+  // the login overlay for regular visitors but lets #/vote/{id} deep links
+  // straight through so shared voting links never demand a login.
+  return <>{loading ? null : <MainApp />}</>;
 }
 
 export default function App() {
@@ -52,6 +47,17 @@ function MainApp() {
   const allContestants = contestants;
   const { user } = useAuth();
 
+  // A shared voting link (#/vote/{id}) opens the contestant profile without
+  // requiring an account — anyone can preview and vote anonymously.
+  const [deepLinkVote, setDeepLinkVote] = useState(
+    () => window.location.hash.startsWith("#/vote/"),
+  );
+  useEffect(() => {
+    const onHash = () =>
+      setDeepLinkVote(window.location.hash.startsWith("#/vote/"));
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   // Load the contests the user has actually entered (synced everywhere) and
   // refresh whenever auth or the live data changes.
   useEffect(() => {
@@ -81,9 +87,16 @@ function MainApp() {
         setTab("signup");
         return true;
       }
-      const m = window.location.hash.match(/^#\/vote\/(\d+)/);
+      // Shared links carry either the numeric demo id or the real backend
+      // ObjectId (the OG landing page deep-links with the apiId).
+      const m =
+        window.location.hash.match(/^#\/vote\/([0-9a-fA-F]{24})/) ||
+        window.location.hash.match(/^#\/vote\/(\d+)/);
       if (m) {
-        const c = contestantsList.find((x) => x.id === Number(m[1]));
+        const id = m[1];
+        const c = contestantsList.find(
+          (x) => (x.apiId && x.apiId === id) || x.id === Number(id),
+        );
         if (c) {
           setSelected(c);
           setViewingProfile(true);
@@ -129,6 +142,11 @@ function MainApp() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [tab, openContest]);
+
+  // Anonymous regular visitors get the sign-up wall; vote deep links don't.
+  if (!user && !deepLinkVote) {
+    return <AuthOverlay />;
+  }
 
   return (
     <>
@@ -210,14 +228,16 @@ function MainApp() {
         />
       )}
 
-      <BottomNav
-        active={tab}
-        onChange={(t) => {
-          setTab(t);
-          setViewingProfile(false);
-          if (t !== "contests") setOpenContest(null);
-        }}
-      />
+      {!(tab === "profile" && viewingProfile && selected) && (
+        <BottomNav
+          active={tab}
+          onChange={(t) => {
+            setTab(t);
+            setViewingProfile(false);
+            if (t !== "contests") setOpenContest(null);
+          }}
+        />
+      )}
     </>
   );
 }

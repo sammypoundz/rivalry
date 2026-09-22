@@ -39,9 +39,17 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
 
   const active = mine.find((c) => c.id === activeId) ?? mine[0] ?? null;
 
-  /** Every photo across all entries, tagged with its owner contestant. */
-  const allPhotos = mine.flatMap((c) =>
-    (c.gallery ?? []).map((img) => ({ img, contestantId: c.id })),
+  /** Every photo across all entries, tagged with its owner contestant.
+   *  De-duplicated by URL so the same photo never shows twice (e.g. it sits
+   *  in two contestants' galleries). Oldest entry wins for deletion. */
+  const allPhotos = Array.from(
+    new Map(
+      mine
+        .flatMap((c) =>
+          (c.gallery ?? []).map((img) => ({ img, contestantId: c.id })),
+        )
+        .map((p) => [p.img, p]),
+    ).values(),
   );
 
   const flash = (msg: string) => {
