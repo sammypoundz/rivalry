@@ -56,13 +56,14 @@
   background: rgba(212, 175, 55, 0.2);
 }
 
-/* Mobile: Sign in takes the Earn button's spot in the header */
+/* Mobile: Sign in takes the Earn button's spot — but only when a Sign in
+   button exists (logged-out). A logged-in user keeps seeing Earn. */
 @media (max-width: 768px) {
-  .dashboard__earn {
-    display: none;
-  }
   .dashboard__signin {
     display: flex;
+  }
+  .dashboard__header-row:has(.dashboard__signin) .dashboard__earn {
+    display: none;
   }
 }
 
