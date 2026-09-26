@@ -1,0 +1,215 @@
+@import "../index.css";
+
+.allcontestants {
+  min-height: 100%;
+}
+
+.allcontestants__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 14px 16px 0;
+  padding: 8px 14px 8px 8px;
+  border: 1px solid var(--grey-dark);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.allcontestants__back:hover {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.allcontestants__head {
+  margin: 14px 16px 0;
+}
+
+.allcontestants__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.25rem;
+  color: var(--gold);
+}
+
+.allcontestants__sub {
+  margin: 4px 0 0;
+  color: var(--grey);
+  font-size: 0.78rem;
+}
+
+/* ---------- Responsive grid: columns scale with roster size ----------
+   Base = the column count chosen in AllContestants.tsx (2–6). On wider
+   screens more columns fit, so density increases with available space too. */
+.allcontestants__grid {
+  display: grid;
+  gap: 12px;
+  margin: 16px;
+}
+
+.allcontestants--c2 .allcontestants__grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+.allcontestants--c3 .allcontestants__grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+.allcontestants--c4 .allcontestants__grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+.allcontestants--c5 .allcontestants__grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+.allcontestants--c6 .allcontestants__grid {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+/* Wider screens pack more columns in for the same card readability */
+@media (min-width: 480px) {
+  .allcontestants--c2 .allcontestants__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .allcontestants--c3 .allcontestants__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .allcontestants--c4 .allcontestants__grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .allcontestants--c5 .allcontestants__grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .allcontestants--c6 .allcontestants__grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .allcontestants--c3 .allcontestants__grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .allcontestants--c4 .allcontestants__grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .allcontestants--c5 .allcontestants__grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .allcontestants--c6 .allcontestants__grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+.allcontestants__card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid var(--grey-dark);
+  border-radius: 16px;
+  background: var(--panel);
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.allcontestants__card:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.allcontestants__imgwrap {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: #1a1a1a;
+}
+
+.allcontestants__imgwrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.allcontestants__rank {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 800;
+  backdrop-filter: blur(4px);
+}
+
+.allcontestants__number {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+}
+
+.allcontestants__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 12px;
+}
+
+.allcontestants__name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.allcontestants__state {
+  color: var(--grey);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.allcontestants__votes {
+  margin-top: 2px;
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+/* Cards get tighter as the roster grows (denser grids = smaller text) */
+.allcontestants--c5 .allcontestants__name,
+.allcontestants--c6 .allcontestants__name {
+  font-size: 0.72rem;
+}
+.allcontestants--c5 .allcontestants__state,
+.allcontestants--c6 .allcontestants__state {
+  font-size: 0.6rem;
+}
+.allcontestants--c5 .allcontestants__votes,
+.allcontestants--c6 .allcontestants__votes {
+  font-size: 0.68rem;
+}
+
+@media (max-width: 360px) {
+  .allcontestants--c3 .allcontestants__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

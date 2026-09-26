@@ -15,6 +15,9 @@ import {
   ImagePlus,
   Loader2,
   Crown,
+  UserPlus,
+  Check,
+  Share2,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { getMyContestants, submitContestant, uploadImage } from "../lib/api";
@@ -32,6 +35,8 @@ interface ContestsProps {
   allContestants: Contestant[];
   /** Live contests from the backend (falls back to seed data). */
   contests: Contest[];
+  /** Navigate to app screens (e.g. all-contestants). */
+  onNavigate: (screen: string, opts?: { contestId?: string | number }) => void;
 }
 
 const fmtLeft = (endsAt: number) => {
@@ -43,6 +48,9 @@ const fmtLeft = (endsAt: number) => {
   return `${h}h left`;
 };
 
+/** At most this many contestants shown on the contest page before "View all". */
+const ROSTER_PREVIEW = 10;
+
 export default function Contests({
   contest,
   onOpen,
@@ -52,6 +60,7 @@ export default function Contests({
   onJoined,
   allContestants,
   contests,
+  onNavigate,
 }: ContestsProps) {
   const list = contests;
   if (contest)
@@ -63,6 +72,7 @@ export default function Contests({
         joined={joinedContestIds.includes(contest.apiId ?? "__none__")}
         onJoined={onJoined}
         allContestants={allContestants}
+        onNavigate={onNavigate}
       />
     );
 
@@ -120,6 +130,19 @@ export default function Contests({
   );
 }
 
+type ContestDetailProps = {
+  contest: Contest;
+  onBack: () => void;
+  onSelect: (id: number) => void;
+  joined: boolean;
+  onJoined: () => void;
+  allContestants: Contestant[];
+  onNavigate: (
+    screen: "all-contestants",
+    opts: { contestId: number },
+  ) => void;
+};
+
 function ContestDetail({
   contest,
   onBack,
@@ -127,16 +150,11 @@ function ContestDetail({
   joined,
   onJoined,
   allContestants,
-}: {
-  contest: Contest;
-  onBack: () => void;
-  onSelect: (id: number) => void;
-  joined: boolean;
-  onJoined: () => void;
-  allContestants: Contestant[];
-}) {
+  onNavigate,
+}: ContestDetailProps) {
   const [showJoin, setShowJoin] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [referOpen, setReferOpen] = useState(false);
   const { user } = useAuth();
   // Live roster: when the contest knows its backend contestant ids, filter the
   // live contestant list by them; fall back to numeric-id matching for seed data.
@@ -181,7 +199,21 @@ function ContestDetail({
             </button>
           )}
         </div>
+        {/* Bouncing refer-a-friend button on the cover photo */}
+        <button
+          className="contest-detail__refer"
+          aria-label="Refer a friend to this contest"
+          title="Refer a friend to this contest"
+          onClick={() => setReferOpen(true)}
+        >
+          <UserPlus size={17} />
+          <span>Refer a Friend</span>
+        </button>
       </div>
+
+      {referOpen && (
+        <ReferContestModal contest={contest} onClose={() => setReferOpen(false)} />
+      )}
 
       {showAuth && (
         <AuthOverlay
@@ -229,7 +261,7 @@ function ContestDetail({
             <span>Total votes</span>
           </div>
           <div>
-            <strong>{contest.contestantIds.length}</strong>
+            <strong>{list.length}</strong>
             <span>Contestants</span>
           </div>
           <div>
@@ -244,7 +276,7 @@ function ContestDetail({
           <Users size={17} /> Contestants
         </h2>
         <div className="contest-detail__roster">
-          {list.map((c) => (
+          {list.slice(0, ROSTER_PREVIEW).map((c) => (
             <button
               key={c.id}
               className="roster-row"
@@ -264,8 +296,109 @@ function ContestDetail({
             </button>
           ))}
         </div>
+        {list.length > ROSTER_PREVIEW && (
+          <button
+            className="contest-detail__view-all"
+            onClick={() =>
+              onNavigate("all-contestants", { contestId: contest.id })
+            }
+          >
+            <Users size={16} /> View all {list.length} contestants
+          </button>
+        )}
       </section>
     </main>
+  );
+}
+
+/** Share sheet for referring a friend to this specific contest. */
+function ReferContestModal({
+  contest,
+  onClose,
+}: {
+  contest: Contest;
+  onClose: () => void;
+}) {
+  const link = `${window.location.origin}${window.location.pathname}#/contest/${contest.id}`;
+  const text = `Come vote for me on Rivalry — ${contest.title}! 🏆`;
+
+  const shareTargets = [
+    {
+      label: "WhatsApp",
+      icon: "💬",
+      url: `https://wa.me/?text=${encodeURIComponent(`${text} ${link}`)}`,
+    },
+    {
+      label: "X / Twitter",
+      icon: "𝕏",
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(link)}`,
+    },
+    {
+      label: "Facebook",
+      icon: "f",
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`,
+    },
+    {
+      label: "Telegram",
+      icon: "✈️",
+      url: `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
+    },
+  ];
+
+  const nativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: contest.title, text, url: link });
+        onClose();
+        return;
+      } catch {
+        /* user dismissed */
+      }
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      onClose();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="share-overlay" onClick={onClose}>
+      <div className="share-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="share-sheet__grabber" />
+        <h3>Refer a Friend</h3>
+        <p>Invite friends to discover and support {contest.title}.</p>
+        {typeof navigator.share !== "undefined" && (
+          <button className="share-sheet__native" onClick={nativeShare}>
+            <Share2 size={16} /> Share via device…
+          </button>
+        )}
+        <div className="share-sheet__targets">
+          {shareTargets.map((t) => (
+            <a
+              key={t.label}
+              href={t.url}
+              target="_blank"
+              rel="noreferrer"
+              className="share-sheet__target"
+            >
+              <span className="share-sheet__target-icon">{t.icon}</span>
+              {t.label}
+            </a>
+          ))}
+        </div>
+        <button className="share-sheet__copy" onClick={copy}>
+          <Check size={15} /> Copy contest link
+        </button>
+        <button className="share-sheet__cancel" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

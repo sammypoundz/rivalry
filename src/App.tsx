@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLiveData, contestants as seedContestants, contests as seedContests, type Contestant, type Contest } from "./data";
 import Dashboard from "./components/Dashboard";
+import AllContestants from "./components/AllContestants";
 import Leaderboard from "./components/Leaderboard";
 import Profile from "./components/Profile";
 import Contests from "./components/Contests";
@@ -13,6 +14,7 @@ import ScrollSticker from "./components/ScrollSticker";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import AuthOverlay from "./auth/AuthOverlay";
 import { getMyContestants } from "./lib/api";
+import { rosterOf } from "./lib/queries";
 import UserProfile from "./components/UserProfile";
 import "./App.css";
 
@@ -37,6 +39,7 @@ function MainApp() {
   const [selected, setSelected] = useState<Contestant | null>(null);
   const [openContest, setOpenContest] = useState<Contest | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
+  const [allContestantsScreen, setAllContestantsScreen] = useState<Contest | null>(null);
   const [joinedContestIds, setJoinedContestIds] = useState<string[]>([]);
   const [prevTab, setPrevTab] = useState<Tab>("dashboard");
   const [extraContestants, setExtraContestants] = useState<Contestant[]>([]);
@@ -195,7 +198,7 @@ function MainApp() {
       />
       <VoteFeed mobileVisible={tab === "dashboard"} />
       {tab === "dashboard" && <ScrollSticker />}
-      {tab === "dashboard" && (
+      {tab === "dashboard" && !allContestantsScreen && (
         <Dashboard
           onSelect={openProfile}
           joinedContests={contests.filter((c) =>
@@ -207,13 +210,19 @@ function MainApp() {
             setOpenContest(c);
             setTab("contests");
           }}
+          onViewAllContestants={(contestId) => {
+            const contest = contests.find(
+              (c) => (c.apiId ?? "") === String(contestId) || c.id === contestId,
+            );
+            if (contest) setAllContestantsScreen(contest);
+          }}
           onEarn={() => (user ? setTab("earn") : setPendingAuthAction("earn"))}
           // Mobile-only Sign in button (replaces Earn in the dashboard header)
           // for visitors who aren't logged in yet.
           onSignIn={user ? undefined : () => setShowAuth(true)}
         />
       )}
-      {tab === "contests" && (
+      {tab === "contests" && !allContestantsScreen && (
         <Contests
           contest={openContest}
           onOpen={(c) => setOpenContest(c)}
@@ -226,6 +235,28 @@ function MainApp() {
             const c = allContestants.find((x) => x.id === id);
             if (c) openProfile(c);
           }}
+          onNavigate={(screen, opts) => {
+            if (screen !== "all-contestants" || !opts) return;
+            const contestId = String(opts.contestId ?? "");
+            const contest = contests.find(
+              (c) =>
+                String(c.id) === contestId ||
+                (c.apiId && c.apiId === contestId),
+            );
+            if (contest) setAllContestantsScreen(contest);
+          }}
+        />
+      )}
+      {allContestantsScreen && (
+        <AllContestants
+          contest={allContestantsScreen}
+          roster={
+            allContestantsScreen
+              ? rosterOf(allContestantsScreen, allContestants)
+              : []
+          }
+          onSelect={(c) => openProfile(c)}
+          onBack={() => setAllContestantsScreen(null)}
         />
       )}
       {tab === "leaderboard" && (

@@ -11,6 +11,7 @@
 //    (see main.tsx defaults), so votes/likes made elsewhere show up too.
 
 import { QueryClient } from "@tanstack/react-query";
+import type { Contest, Contestant } from "../data";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,19 @@ export const qk = {
   imageLikes: (contestantId: string) => ["image-likes", contestantId] as const,
   supporters: (contestantId: string) => ["supporters", contestantId] as const,
 };
+
+/** Contestants belonging to a contest, ranked by votes (shared helper). */
+export function rosterOf(
+  contest: Contest,
+  allContestants: Contestant[],
+): Contestant[] {
+  const list = contest.contestantApiIds?.length
+    ? allContestants.filter(
+        (c) => c.apiId ? contest.contestantApiIds!.includes(c.apiId) : false,
+      )
+    : allContestants.filter((c) => contest.contestantIds.includes(c.id));
+  return [...list].sort((a, b) => b.votes - a.votes);
+}
 
 /** Event name fired by lib/api.ts after a successful mutation. */
 export const MUTATED_EVENT = "rivalry:mutated";

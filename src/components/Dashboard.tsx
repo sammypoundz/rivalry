@@ -1,4 +1,5 @@
 import { type Contestant, type Contest, formatNaira } from "../data";
+import { rosterOf } from "../lib/queries";
 import {
   Swords,
   ChevronRight,
@@ -22,21 +23,14 @@ interface DashboardProps {
   onEarn: () => void;
   /** Opens the sign-in overlay (shown on mobile in place of the Earn button). */
   onSignIn?: () => void;
+  /** Opens the full contestant grid for a contest (AllContestants page). */
+  onViewAllContestants?: (contestId: number) => void;
 }
 
 const medals = ["🥇", "🥈", "🥉"];
 
-/** Contestants belonging to a contest, ranked by votes. */
-function rosterOf(contest: Contest, allContestants: Contestant[]): Contestant[] {
-  const list = contest.contestantApiIds?.length
-    ? allContestants.filter((c) =>
-        c.apiId ? contest.contestantApiIds!.includes(c.apiId) : false,
-      )
-    : allContestants.filter((c) => contest.contestantIds.includes(c.id));
-  return [...list].sort((a, b) => b.votes - a.votes);
-}
 
-export default function Dashboard({ onSelect, joinedContests, onOpenContest, contests, allContestants, onEarn, onSignIn }: DashboardProps) {
+export default function Dashboard({ onSelect, joinedContests, onOpenContest, contests, allContestants, onEarn, onSignIn, onViewAllContestants }: DashboardProps) {
 
   return (
     <div className="dashboard">
@@ -171,7 +165,11 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
                   <div className="home-contest__actions">
                     <button
                       className="home-contest__view-all"
-                      onClick={() => onOpenContest(contest)}
+                      onClick={() =>
+                        onViewAllContestants
+                          ? onViewAllContestants(contest.id)
+                          : onOpenContest(contest)
+                      }
                     >
                       View all {roster.length} contestants
                       <ChevronRight size={15} strokeWidth={2.2} />

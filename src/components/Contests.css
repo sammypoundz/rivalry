@@ -202,6 +202,37 @@
   font-size: 0.82rem;
 }
 
+.contest-detail__refer {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid rgba(212, 175, 55, 0.7);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  animation: refer-bounce 1.4s ease-in-out infinite;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.contest-detail__refer:hover {
+  background: rgba(212, 175, 55, 0.25);
+  animation-play-state: paused;
+}
+
+@keyframes refer-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
 .contest-detail__timer {
   display: inline-flex;
   align-items: center;
