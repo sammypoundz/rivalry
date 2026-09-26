@@ -34,6 +34,8 @@ export default function UserProfile({ onOpenContest }: UserProfileProps) {
     queryFn: getMyStats,
     enabled: !!user,
     staleTime: 10_000,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
   });
   const stats: ApiMyStats | null = data?.stats ?? null;
 

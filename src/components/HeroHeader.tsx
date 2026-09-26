@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Heart, Share2, X, Copy, Check, Link2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { profileShareLink } from "./ShareProfile";
 import { toggleLike } from "../lib/api";
+import { qk } from "../lib/queries";
 import "./HeroHeader.css";
 
 interface HeroHeaderProps {
@@ -25,6 +27,7 @@ export default function HeroHeader({
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [likePending, setLikePending] = useState(false);
+  const queryClient = useQueryClient();
 
   // When fresh data arrives from the React Query cache (e.g. this contestant
   // was liked on another screen or another device), keep the heart in sync.
@@ -49,6 +52,20 @@ export default function HeroHeader({
       const res = await toggleLike(contestantId);
       setLiked(res.liked);
       setLikeCount(res.likes);
+      // Seed the contestant detail cache with the authoritative like state so
+      // the heart is STILL colored when the user leaves and re-opens this
+      // profile (even before the refetch that follows the invalidation).
+      queryClient.setQueryData(qk.contestant(contestantId), (prev: unknown) => {
+        const p = prev as
+          | { success: true; contestant: { likes?: number }; likedByMe?: boolean }
+          | undefined;
+        if (!p) return prev; // refetch (triggered by the mutation event) will fill it
+        return {
+          ...p,
+          likedByMe: res.liked,
+          contestant: { ...p.contestant, likes: res.likes },
+        };
+      });
     } catch {
       // Revert on failure
       setLiked(!nextLiked);

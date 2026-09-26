@@ -13,7 +13,8 @@ import "./Dashboard.css";
 
 interface DashboardProps {
   onSelect: (contestant: Contestant) => void;
-  joinedContest: Contest | null;
+  /** All contests the user has joined — each gets a banner. */
+  joinedContests: Contest[];
   onOpenContest: (contest: Contest) => void;
   contests: Contest[];
   /** Full contestant list (live data or seed) used to build each contest roster. */
@@ -35,7 +36,7 @@ function rosterOf(contest: Contest, allContestants: Contestant[]): Contestant[] 
   return [...list].sort((a, b) => b.votes - a.votes);
 }
 
-export default function Dashboard({ onSelect, joinedContest, onOpenContest, contests, allContestants, onEarn, onSignIn }: DashboardProps) {
+export default function Dashboard({ onSelect, joinedContests, onOpenContest, contests, allContestants, onEarn, onSignIn }: DashboardProps) {
 
   return (
     <div className="dashboard">
@@ -58,21 +59,24 @@ export default function Dashboard({ onSelect, joinedContest, onOpenContest, cont
         </div>
       </header>
 
-      {joinedContest && (
+      {/* Every contest the user has joined gets its own banner (votes update
+          live via the shared query cache) — multi-contest joining supported. */}
+      {(joinedContests ?? []).map((contest) => (
         <button
+          key={contest.apiId ?? contest.id}
           className="joined-contest-banner"
-          onClick={() => onOpenContest(joinedContest)}
+          onClick={() => onOpenContest(contest)}
         >
           <span className="joined-contest-banner__icon">
             <Swords size={18} />
           </span>
           <span className="joined-contest-banner__text">
-            <strong>You're in: {joinedContest.title}</strong>
+            <strong>You're in: {contest.title}</strong>
             <span>Tap to view votes, rewards &amp; standings</span>
           </span>
           <ChevronRight size={18} />
         </button>
-      )}
+      ))}
 
       {/* One preview block per contest — cover, standings & its own roster */}
       <section className="dashboard__section">

@@ -27,6 +27,9 @@ export default function PhotoGallery({ contestant }: { contestant: Contestant })
     queryFn: () => imageLikesForViewer(apiId, [...photos]),
     enabled: valid && photos.length > 0,
     staleTime: 10_000,
+    // Likes from other visitors show up without a reload.
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: true,
   });
   const counts: Record<string, number> = likesData?.counts ?? {};
   const mine: Set<string> = new Set(likesData?.likedImages ?? []);

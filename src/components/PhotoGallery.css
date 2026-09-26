@@ -197,3 +197,56 @@
   color: rgba(255, 255, 255, 0.7);
   font-size: 13px;
 }
+
+/* ---------- Mobile: true fullscreen viewer ---------- */
+@media (max-width: 640px) {
+  .lightbox {
+    padding: 0;
+  }
+
+  .lightbox__inner {
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+  }
+
+  /* Fullscreen image: fills the screen, edge to edge */
+  .lightbox__img {
+    max-width: 100vw;
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    object-fit: contain;
+    border-radius: 0;
+  }
+
+  /* Controls float over the fullscreen image */
+  .lightbox__bar {
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    justify-content: center;
+    margin-top: 0;
+    z-index: 2;
+  }
+
+  .lightbox__close {
+    position: fixed;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    right: 14px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+  }
+
+  .lightbox__count {
+    position: fixed;
+    top: calc(22px + env(safe-area-inset-top, 0px));
+    left: 16px;
+    bottom: auto;
+    z-index: 2;
+  }
+}

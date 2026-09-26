@@ -1,8 +1,10 @@
+import { formatNaira } from "../data";
 import "./StatsCard.css";
 
 interface StatsCardProps {
   votes: number;
   rank: number;
+  /** Prize pool in Naira. */
   prize: number;
 }
 
@@ -23,7 +25,7 @@ export default function StatsCard({ votes, rank, prize }: StatsCardProps) {
       </div>
       <div className="stats__divider" />
       <div className="stats__item">
-        <span className="stats__value">${prize}K</span>
+        <span className="stats__value">{formatNaira(prize)}</span>
         <span className="stats__label">Prize Pool</span>
       </div>
     </div>

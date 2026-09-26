@@ -1,11 +1,13 @@
-import { contestants, type Contestant } from "../data";
+import type { Contestant } from "../data";
 import "./Leaderboard.css";
 
 interface LeaderboardProps {
   onSelect: (contestant: Contestant) => void;
+  /** Live contestant list (ranked by live vote counts). */
+  contestants: Contestant[];
 }
 
-export default function Leaderboard({ onSelect }: LeaderboardProps) {
+export default function Leaderboard({ onSelect, contestants }: LeaderboardProps) {
   const ranked = [...contestants].sort((a, b) => b.votes - a.votes);
   const max = ranked[0]?.votes || 1;
 

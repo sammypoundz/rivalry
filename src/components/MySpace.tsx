@@ -22,6 +22,9 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
     queryKey: qk.myContestants,
     queryFn: getMyContestants,
     staleTime: 10_000,
+    // Keep own entries (votes, photos, joined contests) fresh in real time.
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
   });
   const mine: ApiMyContestant[] = mineData?.contestants ?? [];
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -40,6 +43,9 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
     queryFn: () => imageLikesForViewer(activeIdResolved, [...(active?.gallery ?? [])]),
     enabled: !!active && (active?.gallery ?? []).length > 0,
     staleTime: 10_000,
+    // Likes on photos by other visitors appear without a reload.
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: true,
   });
   const likeCounts: Record<string, number> = likesData?.counts ?? {};
   const likedByMe: Set<string> = new Set(likesData?.likedImages ?? []);

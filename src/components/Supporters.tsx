@@ -25,6 +25,9 @@ export default function Supporters({ contestantId }: { contestantId: string }) {
     queryFn: () => listSupporters(contestantId),
     enabled: isValidId,
     staleTime: 10_000,
+    // Fresh votes update the supporter board in real time.
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
   });
   const supporters: SupporterRow[] = data?.supporters ?? [];
   const errMessage = error instanceof Error ? error.message : null;

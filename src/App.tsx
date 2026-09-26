@@ -198,7 +198,9 @@ function MainApp() {
       {tab === "dashboard" && (
         <Dashboard
           onSelect={openProfile}
-          joinedContest={contests.find((c) => joinedContestIds.includes(c.apiId ?? "")) ?? null}
+          joinedContests={contests.filter((c) =>
+            joinedContestIds.includes(c.apiId ?? ""),
+          )}
           contests={contests}
           allContestants={allContestants}
           onOpenContest={(c) => {
@@ -226,7 +228,9 @@ function MainApp() {
           }}
         />
       )}
-      {tab === "leaderboard" && <Leaderboard onSelect={openProfile} />}
+      {tab === "leaderboard" && (
+        <Leaderboard onSelect={openProfile} contestants={allContestants} />
+      )}
       {tab === "signup" && (
         <SignUp
           onBack={() => setTab(prevTab)}

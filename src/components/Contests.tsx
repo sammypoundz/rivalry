@@ -355,7 +355,9 @@ function JoinFlow({
     setError("");
     try {
       await submitContestant(contest.apiId, {
-        number: 1 + (Math.floor(Math.random() * 100000) % 100),
+        // `number` is globally unique in the DB — use a wide-range pick (with a
+        // backend retry on collision) so joining multiple contests never fails.
+        number: 100000 + Math.floor(Math.random() * 899999),
         name: name.trim(),
         state: state.trim(),
         age: Number(age) || 21,

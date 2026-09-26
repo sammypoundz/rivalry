@@ -209,7 +209,10 @@ export function mapApiContestant(c: ApiContestant, index: number): Contestant {
     gallery: c.gallery ?? [],
     votes: c.votes,
     voteGoal: c.voteGoal,
-    rank: c.rank ?? index + 1,
+    // Live rank: the caller sorts by votes (desc) before mapping, so the
+    // position index IS the current rank — this keeps rank in sync everywhere
+    // as votes come in, instead of showing the stale stored rank.
+    rank: index + 1,
     prize: c.prize ?? 50000,
     likes: c.likes ?? 0,
     votingEndsAt: new Date(c.votingEndsAt).getTime(),
@@ -275,7 +278,10 @@ export function useLiveData(): LiveData {
       return { contests: mappedContests, contestants: mappedContestants };
     },
     staleTime: 15_000,
-    refetchInterval: 30_000, // keep votes/likes ticking without a refresh
+    // Real-time-ish sync: re-poll every 10s so votes/likes/joins/uploads made
+    // by OTHER people (other devices) show up here without a page reload.
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
   });
 
   const data = query.data;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Contestant } from "../data";
 import { getContestant } from "../lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -34,6 +34,9 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
     queryFn: () => getContestant(apiId),
     enabled: /^[0-9a-fA-F]{24}$/.test(apiId),
     staleTime: 10_000,
+    // Real-time profile: votes/likes cast elsewhere update here in seconds.
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
   });
   const likedByMe = Boolean(detail?.likedByMe);
   const likes = detail?.contestant.likes ?? contestant.likes ?? 0;
@@ -45,6 +48,25 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
     setLocalVotes(null);
   }, [apiId]);
 
+  // One merged, live contestant object drives the WHOLE profile: cover photo,
+  // countdown end, rank, prize pool and gallery all come from the cached
+  // detail (kept fresh by the mutation bridge), so every section stays in sync
+  // with votes/likes made anywhere — and with the leaderboard, which ranks by
+  // live vote counts.
+  const profile: Contestant = useMemo(() => {
+    const d = detail?.contestant;
+    return {
+      ...contestant,
+      heroImage: d?.heroImage ?? contestant.heroImage,
+      gallery: d?.gallery ?? contestant.gallery,
+      votes,
+      rank: d?.rank ?? contestant.rank,
+      prize: d?.prize ?? contestant.prize,
+      votingEndsAt: d ? new Date(d.votingEndsAt).getTime() : contestant.votingEndsAt,
+      likes,
+    };
+  }, [contestant, detail, votes, likes]);
+
   const handleVote = () => setShowVoteModal(true);
 
   // Section components currently read the default contestant from data.ts;
@@ -52,33 +74,33 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
   return (
     <div className="profile app">
       <HeroHeader
-        image={contestant.heroImage}
-        name={contestant.name}
-        contestantId={contestant.apiId}
+        image={profile.heroImage}
+        name={profile.name}
+        contestantId={profile.apiId}
         likeCount={likes}
         liked={likedByMe}
         onBack={onBack}
       />
-      <IdentitySection contestant={contestant} />
-      <CountdownTimer endsAt={contestant.votingEndsAt} />
+      <IdentitySection contestant={profile} />
+      <CountdownTimer endsAt={profile.votingEndsAt} />
       <StatsCard
         votes={votes}
-        rank={contestant.rank}
-        prize={contestant.prize / 1000}
+        rank={profile.rank}
+        prize={profile.prize}
       />
       <VoteNowButton onClick={handleVote} />
-      <AboutSection contestant={contestant} />
-      <PhotoGallery contestant={contestant} />
-      <SupportProgress votes={votes} goal={contestant.voteGoal} />
-      <Supporters contestantId={contestant.apiId ?? String(contestant.id)} />
-      <ShareProfile contestantId={contestant.id} apiId={contestant.apiId} contestantName={contestant.name} />
+      <AboutSection contestant={profile} />
+      <PhotoGallery contestant={profile} />
+      <SupportProgress votes={votes} goal={profile.voteGoal} />
+      <Supporters contestantId={profile.apiId ?? String(profile.id)} />
+      <ShareProfile contestantId={profile.id} apiId={profile.apiId} contestantName={profile.name} />
       <div className="app__footer-spacer" />
       <StickyVoteBar votes={votes} onVote={handleVote} />
       {showVoteModal && (
         <VoteModal
-          contestantId={contestant.apiId ?? ""}
-          contestantName={contestant.name}
-          contestantImage={contestant.heroImage}
+          contestantId={profile.apiId ?? ""}
+          contestantName={profile.name}
+          contestantImage={profile.heroImage}
           onClose={() => setShowVoteModal(false)}
           onVoted={(newTotal) => setLocalVotes(newTotal)}
         />

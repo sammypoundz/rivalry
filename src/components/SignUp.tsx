@@ -77,7 +77,9 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
       let created = null;
       if (contest) {
         const res = await submitContestant(contest.id, {
-          number: 1 + (Math.floor(Math.random() * 100000) % 40),
+          // `number` is globally unique in the DB — wide-range pick avoids
+          // colliding with existing contestants (backend also retries).
+          number: 100000 + Math.floor(Math.random() * 899999),
           name: form.name.trim(),
           state: form.state.trim(),
           age: Number(form.age) || 21,
