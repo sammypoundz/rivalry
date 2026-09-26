@@ -236,12 +236,13 @@ export function mapApiContest(c: ApiContest, index: number): Contest {
   };
 }
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   listContests as apiListContests,
   type ApiContest,
   type ApiContestant,
 } from "./lib/api";
+import { qk } from "./lib/queries";
 
 export interface LiveData {
   contestants: Contestant[];
@@ -255,59 +256,39 @@ export interface LiveData {
 }
 
 /**
- * Fetches contests + contestants from the backend.
- * Falls back to the static seed data above when the API is unreachable,
- * so the UI keeps working in offline/demo mode.
+ * Fetches contests + contestants from the backend through the React Query
+ * cache: instant loads from cache, background refresh when stale, automatic
+ * re-sync on window focus/reconnect, and light polling so live vote counts
+ * stay current without a manual refresh. Falls back to the static seed data
+ * above when the API is unreachable (offline/demo mode).
  */
 export function useLiveData(): LiveData {
-  const [state, setState] = useState<LiveData>({
-    contestants,
-    contests,
-    loading: true,
-    error: null,
-    usingFallback: false,
-    refresh: () => {},
+  const query = useQuery({
+    queryKey: qk.contests,
+    queryFn: async () => {
+      const { contests: apiContests } = await apiListContests();
+      const mappedContests = apiContests.map((c, i) => mapApiContest(c, i));
+      const mappedContestants = apiContests
+        .flatMap((c) => c.contestants ?? [])
+        .sort((a, b) => b.votes - a.votes)
+        .map(mapApiContestant);
+      return { contests: mappedContests, contestants: mappedContestants };
+    },
+    staleTime: 15_000,
+    refetchInterval: 30_000, // keep votes/likes ticking without a refresh
   });
 
-  const [tick, setTick] = useState(0);
+  const data = query.data;
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const { contests: apiContests } = await apiListContests();
-        if (cancelled) return;
-        const mappedContests = apiContests.map((c, i) => mapApiContest(c, i));
-        const mappedContestants = apiContests
-          .flatMap((c) => c.contestants ?? [])
-          .sort((a, b) => b.votes - a.votes)
-          .map(mapApiContestant);
-        setState({
-          contestants: mappedContestants.length ? mappedContestants : contestants,
-          contests: mappedContests.length ? mappedContests : contests,
-          loading: false,
-          error: null,
-          usingFallback: false,
-          refresh: () => setTick((t) => t + 1),
-        });
-      } catch (err) {
-        if (cancelled) return;
-        setState((s) => ({
-          ...s,
-          loading: false,
-          usingFallback: true,
-          error: err instanceof Error ? err.message : "API unavailable",
-          refresh: () => setTick((t) => t + 1),
-        }));
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [tick]);
-
-  return state;
+  return {
+    contestants:
+      data && data.contestants.length ? data.contestants : contestants,
+    contests: data && data.contests.length ? data.contests : contests,
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    usingFallback: query.isError,
+    refresh: () => void query.refetch(),
+  };
 }
 
 export const formatNaira = (n: number) =>

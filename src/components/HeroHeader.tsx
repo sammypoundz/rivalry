@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, Share2, X, Copy, Check, Link2 } from "lucide-react";
 import { profileShareLink } from "./ShareProfile";
 import { toggleLike } from "../lib/api";
@@ -25,6 +25,14 @@ export default function HeroHeader({
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [likePending, setLikePending] = useState(false);
+
+  // When fresh data arrives from the React Query cache (e.g. this contestant
+  // was liked on another screen or another device), keep the heart in sync.
+  useEffect(() => {
+    if (likePending) return;
+    setLiked(initialLiked);
+    setLikeCount(initialLikes);
+  }, [initialLiked, initialLikes]);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sharedTo, setSharedTo] = useState<string | null>(null);

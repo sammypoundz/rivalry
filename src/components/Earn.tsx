@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Copy,
   Check,
@@ -13,15 +14,24 @@ import {
 import { formatNaira, contests } from "../data";
 import { useAuth } from "../auth/AuthProvider";
 import { listReferrals, createReferral, type ApiReferral } from "../lib/api";
-import { useEffect } from "react";
+import { qk } from "../lib/queries";
 import "./Earn.css";
 
 /* ---------- Vendor / friend referral (for contestants & users) ---------- */
 
 function VendorReferrals() {
   const { user } = useAuth();
-  const [referrals, setReferrals] = useState<ApiReferral[]>([]);
-  const [earned, setEarned] = useState(0);
+  const queryClient = useQueryClient();
+  // Cached + invalidated by React Query: new referrals (made here or from a
+  // signed-up invitee) appear everywhere without a refresh.
+  const { data: referralsData } = useQuery({
+    queryKey: qk.referrals,
+    queryFn: listReferrals,
+    enabled: !!user,
+    staleTime: 10_000,
+  });
+  const referrals: ApiReferral[] = referralsData?.referrals ?? [];
+  const earned: number = referralsData?.earned ?? 0;
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [copied, setCopied] = useState(false);
@@ -31,46 +41,21 @@ function VendorReferrals() {
   // through it is linked to them as a referral on the backend.
   const link = `${window.location.origin}${window.location.pathname}#/join?ref=${user?.id ?? ""}`;
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    listReferrals()
-      .then((res) => {
-        if (cancelled) return;
-        setReferrals(res.referrals);
-        setEarned(res.earned);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
   const invite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !contact.trim() || sending) return;
     setSending(true);
     try {
-      const res = await createReferral({
+      await createReferral({
         name: name.trim(),
         contact: contact.trim(),
       });
-      setReferrals((r) => [res.referral, ...r]);
+      // The mutation event already invalidates the cache; make sure the new
+      // invite shows up immediately even if the refetch lags.
+      void queryClient.invalidateQueries({ queryKey: qk.referrals });
       setName("");
       setContact("");
     } catch {
-      /* invite stays local-only if the API fails */
-      setReferrals((r) => [
-        {
-          id: `local-${Date.now()}`,
-          name: name.trim(),
-          contact: contact.trim(),
-          status: "Invited",
-          reward: 0,
-          createdAt: new Date().toISOString(),
-        },
-        ...r,
-      ]);
       setName("");
       setContact("");
     } finally {

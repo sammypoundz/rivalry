@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Trophy, Plus, Trash2, Loader2, ImagePlus, Swords } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getMyContestants,
   addGalleryImage,
@@ -8,97 +9,64 @@ import {
   likeImage,
   type ApiMyContestant,
 } from "../lib/api";
+import { qk, type ImageLikesData } from "../lib/queries";
 import { Lightbox } from "./PhotoGallery";
 import { Heart } from "lucide-react";
 import "./MySpace.css";
 
 export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: ApiMyContestant["contest"]) => void }) {
-  const [mine, setMine] = useState<ApiMyContestant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  // Cached + invalidated by React Query: gallery uploads, likes and votes made
+  // anywhere (public profile, Contests, VoteModal) reflect here instantly.
+  const { data: mineData, isLoading: loading } = useQuery({
+    queryKey: qk.myContestants,
+    queryFn: getMyContestants,
+    staleTime: 10_000,
+  });
+  const mine: ApiMyContestant[] = mineData?.contestants ?? [];
   const [activeId, setActiveId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    getMyContestants()
-      .then((res) => {
-        if (cancelled) return;
-        setMine(res.contestants);
-        setActiveId(res.contestants[0]?.id ?? null);
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setError(
-            err instanceof Error ? err.message : "Failed to load your profile",
-          );
-      })
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const active =
+    mine.find((c) => c.id === activeId) ?? mine[0] ?? null;
 
-  const active = mine.find((c) => c.id === activeId) ?? mine[0] ?? null;
-
-  // Like state for my gallery photos (the owner can also like/unlike their
-  // own photos — counts come from the same ImageLike store as the public
-  // profile gallery).
-  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
-  const [likedByMe, setLikedByMe] = useState<Set<string>>(new Set());
+  // Like state for my gallery photos, held in the React Query cache so likes
+  // from the public profile gallery and this owner view stay in sync.
+  const activeIdResolved = active?.id ?? "";
+  const { data: likesData } = useQuery({
+    queryKey: qk.imageLikes(activeIdResolved),
+    queryFn: () => imageLikesForViewer(activeIdResolved, [...(active?.gallery ?? [])]),
+    enabled: !!active && (active?.gallery ?? []).length > 0,
+    staleTime: 10_000,
+  });
+  const likeCounts: Record<string, number> = likesData?.counts ?? {};
+  const likedByMe: Set<string> = new Set(likesData?.likedImages ?? []);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    const photos = active?.gallery ?? [];
-    if (!active || photos.length === 0) {
-      setLikeCounts({});
-      setLikedByMe(new Set());
-      return;
-    }
-    let cancelled = false;
-    imageLikesForViewer(active.id, [...photos])
-      .then((res) => {
-        if (cancelled) return;
-        setLikeCounts(res.counts ?? {});
-        setLikedByMe(new Set(res.likedImages ?? []));
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [active?.id, active?.gallery.join("|")]);
 
   const toggleImageLike = async (image: string) => {
     if (!active) return;
     const wasLiked = likedByMe.has(image);
-    setLikedByMe((s) => {
-      const next = new Set(s);
-      if (wasLiked) next.delete(image);
-      else next.add(image);
-      return next;
-    });
-    setLikeCounts((c) => ({
-      ...c,
-      [image]: Math.max(0, (c[image] ?? 0) + (wasLiked ? -1 : 1)),
-    }));
+    // Optimistic update in the cache
+    queryClient.setQueryData<ImageLikesData>(
+      qk.imageLikes(activeIdResolved),
+      (prev) => ({
+        success: true,
+        likedImages: wasLiked
+          ? (prev?.likedImages ?? []).filter((i) => i !== image)
+          : [...(prev?.likedImages ?? []), image],
+        counts: {
+          ...(prev?.counts ?? {}),
+          [image]: Math.max(0, (prev?.counts?.[image] ?? 0) + (wasLiked ? -1 : 1)),
+        },
+      }),
+    );
     try {
-      const res = await likeImage(active.id, image);
-      setLikeCounts((c) => ({ ...c, [image]: res.imageLikes }));
-      setLikedByMe((s) => {
-        const next = new Set(s);
-        if (res.liked) next.add(image);
-        else next.delete(image);
-        return next;
-      });
+      await likeImage(active.id, image);
+      // Mutation event invalidates the cache → authoritative counts reappear.
     } catch {
-      setLikedByMe((s) => {
-        const next = new Set(s);
-        if (wasLiked) next.add(image);
-        else next.delete(image);
-        return next;
-      });
+      queryClient.invalidateQueries({ queryKey: qk.imageLikes(activeIdResolved) });
     }
   };
 
@@ -122,10 +90,17 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
         reader.readAsDataURL(file);
       });
       const res = await addGalleryImage(active.id, dataUrl);
-      setMine((list) =>
-        list.map((c) =>
-          c.id === active.id ? { ...c, gallery: res.gallery } : c,
-        ),
+      // Optimistic cache update; the mutation event also invalidates, so the
+      // new photo shows up in MySpace, the public profile and stats at once.
+      queryClient.setQueryData<{ success: true; contestants: ApiMyContestant[] }>(
+        qk.myContestants,
+        (prev) =>
+          prev && {
+            ...prev,
+            contestants: prev.contestants.map((c) =>
+              c.id === active.id ? { ...c, gallery: res.gallery } : c,
+            ),
+          },
       );
       flash("Photo added to your gallery");
     } catch (err) {
@@ -147,24 +122,41 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
       return;
     // Optimistic removal
     const prev = active.gallery;
-    setMine((list) =>
-      list.map((c) =>
-        c.id === active.id
-          ? { ...c, gallery: prev.filter((g) => g !== image) }
-          : c,
-      ),
+    queryClient.setQueryData<{ success: true; contestants: ApiMyContestant[] }>(
+      qk.myContestants,
+      (old) =>
+        old && {
+          ...old,
+          contestants: old.contestants.map((c) =>
+            c.id === active.id
+              ? { ...c, gallery: prev.filter((g) => g !== image) }
+              : c,
+          ),
+        },
     );
     try {
       const res = await removeGalleryImage(active.id, image);
-      setMine((list) =>
-        list.map((c) =>
-          c.id === active.id ? { ...c, gallery: res.gallery } : c,
-        ),
+      queryClient.setQueryData<{ success: true; contestants: ApiMyContestant[] }>(
+        qk.myContestants,
+        (old) =>
+          old && {
+            ...old,
+            contestants: old.contestants.map((c) =>
+              c.id === active.id ? { ...c, gallery: res.gallery } : c,
+            ),
+          },
       );
     } catch (err) {
       // Restore on failure
-      setMine((list) =>
-        list.map((c) => (c.id === active.id ? { ...c, gallery: prev } : c)),
+      queryClient.setQueryData<{ success: true; contestants: ApiMyContestant[] }>(
+        qk.myContestants,
+        (old) =>
+          old && {
+            ...old,
+            contestants: old.contestants.map((c) =>
+              c.id === active.id ? { ...c, gallery: prev } : c,
+            ),
+          },
       );
       flash(err instanceof Error ? err.message : "Delete failed");
     }
@@ -239,7 +231,6 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
           {active && <span className="myspace__title-sub">{active.name}</span>}
         </h2>
         {notice && <p className="myspace__notice">{notice}</p>}
-        {error && <p className="myspace__error">{error}</p>}
 
         {active && (
           <>

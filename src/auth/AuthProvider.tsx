@@ -8,6 +8,7 @@ import {
 } from "react";
 import * as api from "../lib/api";
 import type { ApiUser } from "../lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextValue {
   user: ApiUser | null;
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // On first load, check if we already have a valid token
   useEffect(() => {
@@ -67,6 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.logout();
     setUser(null);
   }, []);
+
+  // Whenever the signed-in identity changes, refetch everything user-scoped
+  // (my contestants, my stats, referrals, joined contests) so all screens
+  // reflect the new session immediately.
+  useEffect(() => {
+    void queryClient.invalidateQueries();
+  }, [user, queryClient]);
 
   return (
     <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>

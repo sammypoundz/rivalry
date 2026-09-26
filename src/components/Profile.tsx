@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import type { Contestant } from "../data";
 import { getContestant } from "../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { qk } from "../lib/queries";
 import VoteModal from "./VoteModal";
 import HeroHeader from "./HeroHeader";
 import IdentitySection from "./IdentitySection";
@@ -21,29 +23,26 @@ interface ProfileProps {
 }
 
 export default function Profile({ contestant, onBack }: ProfileProps) {
-  const [votes, setVotes] = useState(contestant.votes);
   const [showVoteModal, setShowVoteModal] = useState(false);
-  const [likedByMe, setLikedByMe] = useState(false);
-  const [likes, setLikes] = useState(contestant.likes ?? 0);
   const apiId = contestant.apiId ?? "";
 
-  // Fetch the real like state when the profile mounts, so the heart doesn't
-  // reset when navigating away and back.
+  // Real like state + live vote total, cached by React Query. Any like/vote
+  // made anywhere invalidates this (via the mutation event), so the profile
+  // header, stats and progress bar stay current without a page refresh.
+  const { data: detail } = useQuery({
+    queryKey: qk.contestant(apiId),
+    queryFn: () => getContestant(apiId),
+    enabled: /^[0-9a-fA-F]{24}$/.test(apiId),
+    staleTime: 10_000,
+  });
+  const likedByMe = Boolean(detail?.likedByMe);
+  const likes = detail?.contestant.likes ?? contestant.likes ?? 0;
+  // Votes: live detail value if available, otherwise the list value; a fresh
+  // vote also overrides optimistically via onVoted → setLocalVotes.
+  const [localVotes, setLocalVotes] = useState<number | null>(null);
+  const votes = localVotes ?? detail?.contestant.votes ?? contestant.votes;
   useEffect(() => {
-    if (!/^[0-9a-fA-F]{24}$/.test(apiId)) return;
-    let cancelled = false;
-    getContestant(apiId)
-      .then((res) => {
-        if (cancelled) return;
-        setLikedByMe(Boolean(res.likedByMe));
-        setLikes(res.contestant.likes ?? 0);
-      })
-      .catch(() => {
-        /* profile still works without like info */
-      });
-    return () => {
-      cancelled = true;
-    };
+    setLocalVotes(null);
   }, [apiId]);
 
   const handleVote = () => setShowVoteModal(true);
@@ -81,7 +80,7 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
           contestantName={contestant.name}
           contestantImage={contestant.heroImage}
           onClose={() => setShowVoteModal(false)}
-          onVoted={(newTotal) => setVotes(newTotal)}
+          onVoted={(newTotal) => setLocalVotes(newTotal)}
         />
       )}
     </div>

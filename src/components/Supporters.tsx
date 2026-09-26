@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { listSupporters } from "../lib/api";
+import { qk } from "../lib/queries";
 import "./Supporters.css";
 
 const medals = ["🥇", "🥈", "🥉"];
@@ -13,44 +14,26 @@ interface SupporterRow {
 }
 
 export default function Supporters({ contestantId }: { contestantId: string }) {
-  const [supporters, setSupporters] = useState<SupporterRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Only fetch when the id is a valid MongoDB ObjectId (24-char hex).
   // Seed/fallback contestants have no apiId, so there is nothing to load.
   const isValidId = /^[0-9a-fA-F]{24}$/.test(contestantId);
 
-  useEffect(() => {
-    if (!isValidId) {
-      setSupporters([]);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    listSupporters(contestantId)
-      .then((res) => {
-        if (!cancelled) setSupporters(res.supporters);
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "Failed to load supporters");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [contestantId, isValidId]);
+  // Cached by React Query: a fresh vote (made here, via the vote modal, or on
+  // another screen) invalidates this and the supporter board updates instantly.
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: qk.supporters(contestantId),
+    queryFn: () => listSupporters(contestantId),
+    enabled: isValidId,
+    staleTime: 10_000,
+  });
+  const supporters: SupporterRow[] = data?.supporters ?? [];
+  const errMessage = error instanceof Error ? error.message : null;
 
   return (
     <section className="supporters">
       <h2 className="supporters__title">Top Supporters</h2>
       {loading && <p className="supporters__empty">Loading supporters...</p>}
-      {error && <p className="supporters__empty">{error}</p>}
+      {errMessage && <p className="supporters__empty">{errMessage}</p>}
       {!loading && !error && supporters.length === 0 && (
         <p className="supporters__empty">No supporters yet — be the first to vote!</p>
       )}

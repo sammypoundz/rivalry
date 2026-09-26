@@ -1,7 +1,9 @@
 import type { Contestant } from "../data";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Heart } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { imageLikesForViewer, likeImage } from "../lib/api";
+import { qk, type ImageLikesData } from "../lib/queries";
 import "./PhotoGallery.css";
 
 interface ViewerState {
@@ -16,65 +18,40 @@ export default function PhotoGallery({ contestant }: { contestant: Contestant })
   );
   const apiId = contestant.apiId ?? "";
   const valid = /^[0-9a-fA-F]{24}$/.test(apiId);
+  const queryClient = useQueryClient();
 
-  // Per-image like state, loaded from the backend (works for anonymous
-  // visitors via their device fingerprint).
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  const [mine, setMine] = useState<Set<string>>(new Set());
+  // Per-image like state, cached in React Query so likes made here also
+  // reflect in MySpace (owner view) and vice versa — no refresh needed.
+  const { data: likesData } = useQuery({
+    queryKey: qk.imageLikes(apiId),
+    queryFn: () => imageLikesForViewer(apiId, [...photos]),
+    enabled: valid && photos.length > 0,
+    staleTime: 10_000,
+  });
+  const counts: Record<string, number> = likesData?.counts ?? {};
+  const mine: Set<string> = new Set(likesData?.likedImages ?? []);
   const [viewer, setViewer] = useState<ViewerState | null>(null);
 
-  useEffect(() => {
-    if (!valid || photos.length === 0) return;
-    let cancelled = false;
-    imageLikesForViewer(apiId, [...photos])
-      .then((res) => {
-        if (cancelled) return;
-        setCounts(res.counts ?? {});
-        setMine(new Set(res.likedImages ?? []));
-      })
-      .catch(() => {
-        /* gallery still renders without like data */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [apiId, photos.join("|")]);
-
   const handleLike = async (image: string) => {
-    const wasLiked = mine.has(image);
-    // Optimistic toggle
-    setMine((s) => {
-      const next = new Set(s);
-      if (wasLiked) next.delete(image);
-      else next.add(image);
-      return next;
-    });
-    setCounts((c) => ({
-      ...c,
-      [image]: Math.max(0, (c[image] ?? 0) + (wasLiked ? -1 : 1)),
-    }));
     if (!valid) return; // demo/seed mode — local only
+    const wasLiked = mine.has(image);
+    // Optimistic toggle in the React Query cache
+    queryClient.setQueryData<ImageLikesData>(qk.imageLikes(apiId), (prev) => ({
+      success: true,
+      likedImages: wasLiked
+        ? (prev?.likedImages ?? []).filter((i) => i !== image)
+        : [...(prev?.likedImages ?? []), image],
+      counts: {
+        ...(prev?.counts ?? {}),
+        [image]: Math.max(0, (prev?.counts?.[image] ?? 0) + (wasLiked ? -1 : 1)),
+      },
+    }));
     try {
-      const res = await likeImage(apiId, image);
-      setCounts((c) => ({ ...c, [image]: res.imageLikes }));
-      setMine((s) => {
-        const next = new Set(s);
-        if (res.liked) next.add(image);
-        else next.delete(image);
-        return next;
-      });
+      await likeImage(apiId, image);
+      // Mutation event invalidates caches → counts propagate to every screen.
     } catch {
       // Revert on failure
-      setMine((s) => {
-        const next = new Set(s);
-        if (wasLiked) next.add(image);
-        else next.delete(image);
-        return next;
-      });
-      setCounts((c) => ({
-        ...c,
-        [image]: Math.max(0, (c[image] ?? 0) + (wasLiked ? 1 : -1)),
-      }));
+      queryClient.invalidateQueries({ queryKey: qk.imageLikes(apiId) });
     }
   };
 

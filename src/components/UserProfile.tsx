@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useAuth } from "../auth/AuthProvider";
 import {
   LogOut,
   User as UserIcon,
@@ -9,8 +9,9 @@ import {
   Swords,
   ImagePlus,
 } from "lucide-react";
-import { useAuth } from "../auth/AuthProvider";
 import { getMyStats, type ApiMyStats, type ApiMyContestant } from "../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { qk } from "../lib/queries";
 import MySpace from "./MySpace";
 import "./UserProfile.css";
 
@@ -26,18 +27,15 @@ interface UserProfileProps {
  */
 export default function UserProfile({ onOpenContest }: UserProfileProps) {
   const { user, signOut } = useAuth();
-  const [stats, setStats] = useState<ApiMyStats | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    getMyStats()
-      .then((res) => !cancelled && setStats(res.stats))
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  // Cached + auto-refreshed by React Query: any vote/like/photo change
+  // (anywhere in the app) invalidates this and the stats update instantly.
+  const { data } = useQuery({
+    queryKey: qk.myStats,
+    queryFn: getMyStats,
+    enabled: !!user,
+    staleTime: 10_000,
+  });
+  const stats: ApiMyStats | null = data?.stats ?? null;
 
   if (!user) return null;
 

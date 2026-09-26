@@ -6,6 +6,8 @@
 // - Production (deployed on Vercel): hit the online backend directly.
 // - VITE_API_URL (set in .env / deployment settings) overrides everything.
 
+import { MUTATED_EVENT } from "./queries";
+
 const ONLINE_API = "https://rivalrybackend.onrender.com/api";
 
 const isLocal =
@@ -128,6 +130,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(body?.message || `Request failed (${res.status})`);
+  }
+  // Every successful mutation (POST/PUT/PATCH/DELETE) announces itself so the
+  // React Query layer can invalidate caches — likes, votes, uploads, gallery
+  // edits etc. then propagate to ALL screens instantly (see lib/queries.ts).
+  if (options.method && options.method.toUpperCase() !== "GET") {
+    window.dispatchEvent(new CustomEvent(MUTATED_EVENT));
   }
   return body as T;
 }
