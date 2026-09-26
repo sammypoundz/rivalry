@@ -275,3 +275,215 @@
   color: var(--gold);
   flex-shrink: 0;
 }
+
+/* ===== Per-contest home blocks (cover + leaderboard + roster) ===== */
+.contest-preview__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold-light);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.contest-preview__open:active,
+.contest-preview__open:hover {
+  background: rgba(212, 175, 55, 0.25);
+}
+
+.dashboard__contest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.home-contest {
+  border-radius: var(--radius);
+  border: 1px solid var(--grey-dark);
+  background: linear-gradient(160deg, #161616, #0f0f0f);
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.home-contest:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.home-contest__cover {
+  position: relative;
+  aspect-ratio: 16 / 9;
+}
+
+.home-contest__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-contest__cover-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, transparent 25%, rgba(0, 0, 0, 0.85));
+}
+
+.home-contest__cover-overlay .contest-card__badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.home-contest__title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.home-contest__tagline {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.home-contest__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.home-contest__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--gold-light);
+}
+
+.home-contest__inner {
+  padding: 14px;
+}
+
+.home-contest__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gold);
+}
+
+.home-contest__heading:not(:first-child) {
+  margin-top: 16px;
+}
+
+/* Podium — mirrors the old leaderboard, scoped to this contest */
+.home-contest__podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.home-podium {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 6px;
+  border-radius: var(--radius);
+  background: rgba(20, 20, 20, 0.85);
+  border: 1px solid var(--grey-dark);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.home-podium:hover {
+  transform: translateY(-3px);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.home-podium--1 {
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow: 0 6px 22px rgba(212, 175, 55, 0.12);
+}
+
+.home-podium__medal {
+  font-size: 1.1rem;
+}
+
+.home-podium__img {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+}
+
+.home-podium__name {
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.home-podium__votes {
+  font-size: 0.58rem;
+  color: var(--gold-light);
+}
+
+.home-contest__grid {
+  margin-bottom: 14px;
+}
+
+.home-contest__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-contest__view-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--grey-dark);
+  background: rgba(212, 175, 55, 0.06);
+  color: var(--gold);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.home-contest__view-all:hover,
+.home-contest__view-all:active {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.14);
+}
+
+.home-contest__open {
+  width: 100%;
+  justify-content: center;
+  padding: 9px 14px;
+}

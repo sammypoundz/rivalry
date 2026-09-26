@@ -134,6 +134,10 @@ export interface Contest {
   rewards: { position: string; amount: number; perk: string }[];
 }
 
+/** Default contest cover shown when a contest has no image. */
+export const contestCoverFallback =
+  "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1200&auto=format&fit=crop";
+
 export const contests: Contest[] = [
   {
     id: 1,
@@ -141,7 +145,7 @@ export const contests: Contest[] = [
     tagline: "The ultimate crown. One winner takes it all.",
     category: "Pageant",
     coverImage:
-      "https://images.unsplash.com/photo-1516450360452-931468278214?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1200&auto=format&fit=crop",
     endsAt:
       Date.now() + 2 * 24 * 3600 * 1000 + 7 * 3600 * 1000 + 42 * 60 * 1000,
     status: "voting-live",
@@ -222,7 +226,7 @@ export function mapApiContest(c: ApiContest, index: number): Contest {
     title: c.title,
     tagline: c.tagline,
     category: c.category,
-    coverImage: c.coverImage,
+    coverImage: c.coverImage || contestCoverFallback,
     endsAt: new Date(c.endsAt).getTime(),
     status: (c.status as Contest["status"]) || "upcoming",
     contestantIds: (c.contestants ?? []).map((x, i) => Number(x.id) || i + 1),

@@ -46,3 +46,13 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* Logout pill (after Profile) — red tint to signal a destructive action. */
+.bottom-nav__item--logout {
+  color: #e5484d;
+}
+
+.bottom-nav__item--logout:hover {
+  color: #ff6b70;
+  background: rgba(229, 72, 77, 0.12);
+}

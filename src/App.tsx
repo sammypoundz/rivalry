@@ -199,6 +199,8 @@ function MainApp() {
         <Dashboard
           onSelect={openProfile}
           joinedContest={contests.find((c) => joinedContestIds.includes(c.apiId ?? "")) ?? null}
+          contests={contests}
+          allContestants={allContestants}
           onOpenContest={(c) => {
             setOpenContest(c);
             setTab("contests");
