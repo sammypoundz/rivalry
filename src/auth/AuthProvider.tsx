@@ -20,6 +20,12 @@ interface AuthContextValue {
     fullName: string,
   ) => Promise<void>;
   signOut: () => void;
+  /** Edit the logged-in user's own details (name/email/phone). */
+  updateProfile: (input: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+  }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -70,6 +76,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback(
+    async (input: {
+      fullName?: string;
+      email?: string;
+      phone?: string;
+    }) => {
+      const res = await api.updateProfile(input);
+      setUser(res.user);
+    },
+    [],
+  );
+
   // Whenever the signed-in identity changes, refetch everything user-scoped
   // (my contestants, my stats, referrals, joined contests) so all screens
   // reflect the new session immediately.
@@ -78,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, queryClient]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{ user, loading, signIn, signUp, signOut, updateProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

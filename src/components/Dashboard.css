@@ -238,6 +238,15 @@
   transition: transform 0.2s ease;
 }
 
+/* Wrapper so the banner and its pager travel together */
+.joined-contest-banners {
+  margin-bottom: 18px;
+}
+
+.joined-contest-banners .joined-contest-banner {
+  margin-bottom: 0;
+}
+
 .joined-contest-banner:hover {
   transform: translateY(-1px);
 }
@@ -274,6 +283,32 @@
 .joined-contest-banner > svg {
   color: var(--gold);
   flex-shrink: 0;
+}
+
+/* "See all joined contests" button under the banner/pager */
+.joined-contest-seeall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold-light);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.joined-contest-seeall:hover,
+.joined-contest-seeall:active {
+  background: rgba(212, 175, 55, 0.25);
 }
 
 /* ===== Per-contest home blocks (cover + leaderboard + roster) ===== */
@@ -320,6 +355,13 @@
 .home-contest__cover {
   position: relative;
   aspect-ratio: 16 / 9;
+  /* rendered as a <button> so the whole cover opens the contest */
+  width: 100%;
+  padding: 0;
+  border: none;
+  display: block;
+  cursor: pointer;
+  text-align: inherit;
 }
 
 .home-contest__cover img {
@@ -371,6 +413,42 @@
   font-size: 0.65rem;
   font-weight: 600;
   color: var(--gold-light);
+}
+
+/* Pager under the joined-contest banners (multi-contest users) */
+.joined-contest-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.joined-contest-pager span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--grey, #999);
+}
+
+.joined-contest-pager button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--grey-dark);
+  color: var(--gold);
+  transition: background 0.15s ease;
+}
+
+.joined-contest-pager button:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.joined-contest-pager button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .home-contest__inner {

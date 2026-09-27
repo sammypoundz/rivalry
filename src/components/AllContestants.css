@@ -2,6 +2,8 @@
 
 .allcontestants {
   min-height: 100%;
+  /* clear the fixed bottom nav so the last row of cards + pager are visible */
+  padding-bottom: 120px;
 }
 
 .allcontestants__back {
@@ -45,62 +47,21 @@
   font-size: 0.78rem;
 }
 
-/* ---------- Responsive grid: columns scale with roster size ----------
-   Base = the column count chosen in AllContestants.tsx (2–6). On wider
-   screens more columns fit, so density increases with available space too. */
+/* ---------- Responsive grid: adapts to the CONTAINER, not the viewport ----------
+   #root is capped at 480px even on desktop, so boosting columns from
+   viewport-width media queries crams 7–8 cards into a narrow column.
+   auto-fill + minmax keeps cards readable at any roster size and width. */
 .allcontestants__grid {
   display: grid;
   gap: 12px;
   margin: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
 }
 
-.allcontestants--c2 .allcontestants__grid {
-  grid-template-columns: repeat(2, 1fr);
-}
-.allcontestants--c3 .allcontestants__grid {
-  grid-template-columns: repeat(3, 1fr);
-}
-.allcontestants--c4 .allcontestants__grid {
-  grid-template-columns: repeat(4, 1fr);
-}
-.allcontestants--c5 .allcontestants__grid {
-  grid-template-columns: repeat(5, 1fr);
-}
-.allcontestants--c6 .allcontestants__grid {
-  grid-template-columns: repeat(6, 1fr);
-}
-
-/* Wider screens pack more columns in for the same card readability */
-@media (min-width: 480px) {
-  .allcontestants--c2 .allcontestants__grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .allcontestants--c3 .allcontestants__grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .allcontestants--c4 .allcontestants__grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-  .allcontestants--c5 .allcontestants__grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
-  .allcontestants--c6 .allcontestants__grid {
-    grid-template-columns: repeat(7, 1fr);
-  }
-}
-
-@media (min-width: 768px) {
-  .allcontestants--c3 .allcontestants__grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-  .allcontestants--c4 .allcontestants__grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
-  .allcontestants--c5 .allcontestants__grid {
-    grid-template-columns: repeat(7, 1fr);
-  }
-  .allcontestants--c6 .allcontestants__grid {
-    grid-template-columns: repeat(8, 1fr);
+/* Narrow phones: a touch smaller so 2 columns always fit */
+@media (max-width: 360px) {
+  .allcontestants__grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   }
 }
 
@@ -208,8 +169,40 @@
   font-size: 0.68rem;
 }
 
-@media (max-width: 360px) {
-  .allcontestants--c3 .allcontestants__grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* Pagination controls under the view-all grid */
+.allcontestants__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 20px auto 0;
+}
+
+.allcontestants__pager span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted, #7c7c8a);
+}
+
+.allcontestants__pager button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.allcontestants__pager button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.allcontestants__pager button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

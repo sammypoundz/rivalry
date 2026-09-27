@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLiveData, contestants as seedContestants, contests as seedContests, type Contestant, type Contest } from "./data";
 import Dashboard from "./components/Dashboard";
+import MyContests from "./components/MyContests";
 import AllContestants from "./components/AllContestants";
 import Leaderboard from "./components/Leaderboard";
 import Profile from "./components/Profile";
@@ -16,6 +17,7 @@ import AuthOverlay from "./auth/AuthOverlay";
 import { getMyContestants } from "./lib/api";
 import { rosterOf } from "./lib/queries";
 import UserProfile from "./components/UserProfile";
+import Wallet from "./components/Wallet";
 import "./App.css";
 
 function AppShell() {
@@ -40,16 +42,27 @@ function MainApp() {
   const [openContest, setOpenContest] = useState<Contest | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
   const [allContestantsScreen, setAllContestantsScreen] = useState<Contest | null>(null);
+  /** Full-screen list of ALL contests the user has joined at once. */
+  const [showMyContests, setShowMyContests] = useState(false);
   const [joinedContestIds, setJoinedContestIds] = useState<string[]>([]);
   const [prevTab, setPrevTab] = useState<Tab>("dashboard");
   const [extraContestants, setExtraContestants] = useState<Contestant[]>([]);
   // Actions that need a real account (Earn, own Profile, joining a contest)
   // open the sign-in modal instead of doing the thing when there's no user.
-  const [pendingAuthAction, setPendingAuthAction] = useState<null | "earn" | "profile" | "joinContest">(null);
+  const [pendingAuthAction, setPendingAuthAction] = useState<
+    null | "earn" | "profile" | "joinContest" | "login"
+  >(null);
   const live = useLiveData();
-  const { contestants, contests } = live.usingFallback
-    ? { contestants: [...seedContestants, ...extraContestants], contests: seedContests }
-    : { contestants: [...live.contestants, ...extraContestants], contests: live.contests };
+  // Memoized so the arrays keep a STABLE identity between renders — two
+  // useEffects below depend on `allContestants`, and a fresh array literal
+  // every render made those effects re-run (and setState) on every render.
+  const { contestants, contests } = useMemo(
+    () =>
+      live.usingFallback
+        ? { contestants: [...seedContestants, ...extraContestants], contests: seedContests }
+        : { contestants: [...live.contestants, ...extraContestants], contests: live.contests },
+    [live.usingFallback, live.contestants, live.contests, extraContestants],
+  );
   const allContestants = contestants;
   const { user } = useAuth();
 
@@ -141,17 +154,34 @@ function MainApp() {
     if (tab !== "profile" && tab !== "signup") setPrevTab(tab);
   }, [tab]);
 
+  // The view-all contestants page is a full screen of its own — when a
+  // contestant profile opens over it, the grid must UNMOUNT (otherwise it
+  // keeps rendering and pushes the profile to the bottom of the page).
+  // We remember which contest was open so closing the profile restores it.
+  const [hiddenAllContestants, setHiddenAllContestants] = useState<Contest | null>(null);
+
   const openProfile = (c: Contestant) => {
+    if (allContestantsScreen) {
+      setHiddenAllContestants(allContestantsScreen);
+      setAllContestantsScreen(null);
+    }
     setSelected(c);
     setViewingProfile(true);
     setTab("profile");
   };
 
-  /** Leaving a contestant profile — always back to the homepage. */
+  /** Leaving a contestant profile — back to the view-all page if that's
+      where it was opened from, otherwise the homepage. */
   const closeProfile = () => {
     setViewingProfile(false);
     setSelected(null);
-    setTab("dashboard");
+    if (hiddenAllContestants) {
+      setAllContestantsScreen(hiddenAllContestants);
+      setHiddenAllContestants(null);
+      setTab(prevTab);
+    } else {
+      setTab("dashboard");
+    }
     // Clear a lingering #/vote/{id} hash so the URL matches the screen.
     // deepLinkVote stays true: a visitor who arrived via a voting link keeps
     // browsing the homepage without the sign-up wall slamming shut.
@@ -163,6 +193,63 @@ function MainApp() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [tab, openContest]);
+
+  // ---- Navigation memory -------------------------------------------------
+  // Every screen change pushes a snapshot of where the user is onto the
+  // history stack. Pressing the browser/phone BACK button pops that snapshot
+  // and restores the exact place they were (tab, open contest, contestant
+  // profile, view-all page) instead of dumping them somewhere random.
+  const listsRef = useRef({ contests, allContestants });
+  listsRef.current = { contests, allContestants };
+
+  const navSnapshot = useCallback(() => ({
+    tab,
+    openContestId: openContest ? String(openContest.apiId ?? openContest.id) : null,
+    selectedId: selected ? String(selected.apiId ?? selected.id) : null,
+    viewingProfile,
+    allContestantsId: allContestantsScreen ? String(allContestantsScreen.apiId ?? allContestantsScreen.id) : null,
+  }), [tab, openContest, selected, viewingProfile, allContestantsScreen]);
+
+  // Seed the current history entry so the very first BACK returns here.
+  useEffect(() => {
+    if (!history.state?.nav) history.replaceState({ nav: navSnapshot() }, "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const restoringNav = useRef(false);
+  useEffect(() => {
+    if (restoringNav.current) {
+      restoringNav.current = false;
+      return;
+    }
+    const snap = navSnapshot();
+    if (JSON.stringify(history.state?.nav) !== JSON.stringify(snap)) {
+      history.pushState({ nav: snap }, "");
+    }
+  }, [navSnapshot]);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const nav = e.state?.nav;
+      if (!nav) return; // hash deep links etc. — let the hash handlers run
+      restoringNav.current = true;
+      const { contests: cs, allContestants: ac } = listsRef.current;
+      const findContest = (id: string) =>
+        cs.find((c) => String(c.apiId ?? c.id) === id) ?? null;
+      const findContestant = (id: string) =>
+        ac.find((c) => String(c.apiId ?? c.id) === id) ?? null;
+      const sel = nav.selectedId ? findContestant(nav.selectedId) : null;
+      setTab(nav.tab);
+      setOpenContest(nav.openContestId ? findContest(nav.openContestId) : null);
+      setSelected(sel);
+      setViewingProfile(Boolean(nav.viewingProfile && sel));
+      setAllContestantsScreen(
+        nav.allContestantsId ? findContest(nav.allContestantsId) : null,
+      );
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   // Anonymous regular visitors get a 10-second free preview of the site, then
   // the sign-up wall appears. Vote deep links skip the wall entirely, and a
@@ -182,10 +269,26 @@ function MainApp() {
   // visitor signs in or creates an account, run the action they were blocked on.
   useEffect(() => {
     if (!pendingAuthAction || !user) return;
-    if (pendingAuthAction === "earn") setTab("earn");
-    if (pendingAuthAction === "profile") setTab("profile");
+    // "login" was just a gate — the visitor is signed in now, stay put.
+    if (pendingAuthAction !== "login") {
+      if (pendingAuthAction === "earn") setTab("earn");
+      if (pendingAuthAction === "profile") setTab("profile");
+    }
     setPendingAuthAction(null);
   }, [user, pendingAuthAction]);
+
+  // First load: wait for REAL data instead of flashing the hardcoded seed
+  // content. Once the fetch resolves (or fails offline), render the app.
+  const booting = live.loading && !live.usingFallback && !live.contests.length;
+
+  if (booting) {
+    return (
+      <div className="app-boot">
+        <span className="app-boot__logo">R</span>
+        <span className="app-boot__label">Loading Rivalry…</span>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -196,7 +299,17 @@ function MainApp() {
         }}
         onSelectContestant={openProfile}
       />
-      <VoteFeed mobileVisible={tab === "dashboard"} />
+      {/* The live-votes ticker stays on the homepage only — it must not
+          appear over the "view all contestants" page. */}
+      <VoteFeed
+        mobileVisible={tab === "dashboard" && !allContestantsScreen}
+        onOpenContestant={(apiId) => {
+          const found =
+            allContestants.find((c) => String(c.apiId ?? "") === String(apiId)) ??
+            allContestants.find((c) => String(c.id) === String(apiId));
+          if (found) openProfile(found);
+        }}
+      />
       {tab === "dashboard" && <ScrollSticker />}
       {tab === "dashboard" && !allContestantsScreen && (
         <Dashboard
@@ -204,6 +317,7 @@ function MainApp() {
           joinedContests={contests.filter((c) =>
             joinedContestIds.includes(c.apiId ?? ""),
           )}
+          onSeeAllJoined={() => setShowMyContests(true)}
           contests={contests}
           allContestants={allContestants}
           onOpenContest={(c) => {
@@ -247,6 +361,23 @@ function MainApp() {
           }}
         />
       )}
+      {showMyContests && (
+        <MyContests
+          joined={contests.filter((c) => joinedContestIds.includes(c.apiId ?? ""))}
+          allContestants={allContestants}
+          onOpenContest={(c) => {
+            setShowMyContests(false);
+            setOpenContest(c);
+            setTab("contests");
+          }}
+          onViewAllContestants={(contest) => {
+            setShowMyContests(false);
+            setAllContestantsScreen(contest);
+          }}
+          onSelectContestant={openProfile}
+          onBack={() => setShowMyContests(false)}
+        />
+      )}
       {allContestantsScreen && (
         <AllContestants
           contest={allContestantsScreen}
@@ -274,6 +405,7 @@ function MainApp() {
         />
       )}
       {tab === "earn" && <Earn />}
+      {tab === "wallet" && user && <Wallet />}
       {tab === "profile" && viewingProfile && selected && (
         <Profile
           key={selected.id}
@@ -315,6 +447,7 @@ function MainApp() {
             setViewingProfile(false);
             if (t !== "contests") setOpenContest(null);
           }}
+          onLogin={() => setPendingAuthAction("login")}
         />
       )}
 

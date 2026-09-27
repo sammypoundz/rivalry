@@ -754,3 +754,195 @@
   border: 1px solid rgba(212, 175, 55, 0.35);
   flex-shrink: 0;
 }
+
+/* Roster pagination inside the contest detail page */
+.contest-detail__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 12px 0 4px;
+}
+
+.contest-detail__pager span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #7c7c8a);
+}
+
+.contest-detail__pager button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.contest-detail__pager button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.contest-detail__pager button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ===== Refer a Friend share sheet ===== */
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: share-fade 0.2s ease;
+}
+
+.share-sheet {
+  width: 100%;
+  max-width: 420px;
+  background: var(--black-soft, #141414);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  animation: share-slide-up 0.25s ease;
+}
+
+.share-sheet__grabber {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.share-sheet h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  color: var(--white, #fff);
+  text-align: center;
+}
+
+.share-sheet p {
+  margin: 0 0 16px;
+  font-size: 0.78rem;
+  color: var(--grey, #999);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.share-sheet__native {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 12px;
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold, #d4af37);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.share-sheet__targets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.share-sheet__target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--white, #fff);
+  font-size: 0.68rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.share-sheet__target:hover {
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.share-sheet__target-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 1.1rem;
+}
+
+.share-sheet__copy,
+.share-sheet__cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.share-sheet__copy {
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold, #d4af37);
+  margin-bottom: 8px;
+}
+
+.share-sheet__cancel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--grey, #999);
+}
+
+@keyframes share-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes share-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Desktop: center as a card instead of bottom sheet */
+@media (min-width: 640px) {
+  .share-overlay {
+    align-items: center;
+  }
+  .share-sheet {
+    border-radius: 20px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+    padding-bottom: 20px;
+  }
+  .share-sheet__grabber {
+    display: none;
+  }
+}

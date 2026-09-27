@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { type Contestant, type Contest, formatNaira } from "../data";
 import { rosterOf } from "../lib/queries";
 import {
   Swords,
   ChevronRight,
+  ChevronLeft,
   Gift,
   LogIn,
   ExternalLink,
@@ -21,6 +23,8 @@ interface DashboardProps {
   /** Full contestant list (live data or seed) used to build each contest roster. */
   allContestants: Contestant[];
   onEarn: () => void;
+  /** Opens the full "My Contests" screen listing every joined contest at once. */
+  onSeeAllJoined?: () => void;
   /** Opens the sign-in overlay (shown on mobile in place of the Earn button). */
   onSignIn?: () => void;
   /** Opens the full contestant grid for a contest (AllContestants page). */
@@ -30,7 +34,12 @@ interface DashboardProps {
 const medals = ["🥇", "🥈", "🥉"];
 
 
-export default function Dashboard({ onSelect, joinedContests, onOpenContest, contests, allContestants, onEarn, onSignIn, onViewAllContestants }: DashboardProps) {
+export default function Dashboard({ onSelect, joinedContests, onOpenContest, contests, allContestants, onEarn, onSignIn, onViewAllContestants, onSeeAllJoined }: DashboardProps) {
+  // Joined-contest banners are paginated one per page so users in several
+  // contests don't get a wall of banners pushing the real content down.
+  const banners = joinedContests ?? [];
+  const [bannerPage, setBannerPage] = useState(0);
+  const banner = banners.length ? banners[bannerPage % banners.length] : null;
 
   return (
     <div className="dashboard">
@@ -53,24 +62,53 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
         </div>
       </header>
 
-      {/* Every contest the user has joined gets its own banner (votes update
-          live via the shared query cache) — multi-contest joining supported. */}
-      {(joinedContests ?? []).map((contest) => (
-        <button
-          key={contest.apiId ?? contest.id}
-          className="joined-contest-banner"
-          onClick={() => onOpenContest(contest)}
-        >
-          <span className="joined-contest-banner__icon">
-            <Swords size={18} />
-          </span>
-          <span className="joined-contest-banner__text">
-            <strong>You're in: {contest.title}</strong>
-            <span>Tap to view votes, rewards &amp; standings</span>
-          </span>
-          <ChevronRight size={18} />
-        </button>
-      ))}
+      {/* One banner per page with pager controls when the user has joined
+          multiple contests (votes update live via the shared query cache). */}
+      {banner && (
+        <div className="joined-contest-banners">
+          <button
+            className="joined-contest-banner"
+            onClick={() => onOpenContest(banner)}
+          >
+            <span className="joined-contest-banner__icon">
+              <Swords size={18} />
+            </span>
+            <span className="joined-contest-banner__text">
+              <strong>You're in: {banner.title}</strong>
+              <span>Tap to view votes, rewards &amp; standings</span>
+            </span>
+            <ChevronRight size={18} />
+          </button>
+          {banners.length > 1 && (
+            <div className="joined-contest-pager">
+              <button
+                disabled={bannerPage === 0}
+                onClick={() => setBannerPage((p) => p - 1)}
+                aria-label="Previous joined contest"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span>
+                {bannerPage + 1} / {banners.length}
+              </span>
+              <button
+                disabled={bannerPage >= banners.length - 1}
+                onClick={() => setBannerPage((p) => p + 1)}
+                aria-label="Next joined contest"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+          <button
+            className="joined-contest-seeall"
+            onClick={() => onSeeAllJoined?.()}
+          >
+            See all {banners.length} joined contest{banners.length === 1 ? "" : "s"}
+            <ChevronRight size={13} strokeWidth={2.2} />
+          </button>
+        </div>
+      )}
 
       {/* One preview block per contest — cover, standings & its own roster */}
       <section className="dashboard__section">
@@ -80,7 +118,12 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
             const roster = rosterOf(contest, allContestants);
             return (
               <div key={contest.id} className="home-contest">
-                <div className="home-contest__cover">
+                {/* The whole cover is a tap target — opens the contest */}
+                <button
+                  className="home-contest__cover"
+                  onClick={() => onOpenContest(contest)}
+                  aria-label={`Open ${contest.title}`}
+                >
                   <img src={contest.coverImage} alt={contest.title} loading="lazy" />
                   <div className="home-contest__cover-overlay">
                     <span className={`contest-card__badge contest-card__badge--${contest.status}`}>
@@ -104,7 +147,7 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
                       </span>
                     </div>
                   </div>
-                </div>
+                </button>
 
                 <div className="home-contest__inner">
                   {/* Per-contest leaderboard (top 3) */}

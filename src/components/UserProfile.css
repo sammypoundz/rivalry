@@ -111,3 +111,274 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ---------- Account info card ---------- */
+.userprofile__info {
+  margin: 18px 20px 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--black-soft, #141414);
+  border: 1px solid rgba(212, 175, 55, 0.12);
+}
+
+.userprofile__info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.userprofile__info-head h2 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold, #d4af37);
+}
+
+.userprofile__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: rgba(212, 175, 55, 0.9);
+  font-size: 0.7rem;
+  font-weight: 700;
+  transition: background 0.15s ease;
+}
+
+.userprofile__edit-btn:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.userprofile__info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.userprofile__info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.userprofile__info-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--grey, #999);
+}
+
+.userprofile__info-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--white, #fff);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userprofile__info-empty {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--grey-dark, #555);
+}
+
+/* ---------- Stats: 2×2 grid so labels never squeeze or wrap ---------- */
+.userprofile__stats {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ---------- Modals (logout confirm + edit info) ---------- */
+.userprofile__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.userprofile__modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 5, 5, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.userprofile__modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  background: var(--black-soft, #121212);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 22px;
+  padding: 24px 20px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+  animation: userprofile-pop 0.22s ease;
+  box-sizing: border-box;
+}
+
+@keyframes userprofile-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.userprofile__modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--grey, #9a9a9a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userprofile__modal-close:hover {
+  color: var(--white, #fff);
+  border-color: var(--gold, #d4af37);
+}
+
+.userprofile__modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(229, 72, 77, 0.12);
+  border: 1px solid rgba(229, 72, 77, 0.35);
+  color: #e5484d;
+  margin-bottom: 12px;
+}
+
+.userprofile__modal-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--white, #fff);
+}
+
+.userprofile__modal-text {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--grey, #999);
+  line-height: 1.55;
+}
+
+.userprofile__modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.userprofile__modal-cancel {
+  flex: 1;
+  padding: 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--white, #fff);
+  font-weight: 600;
+  font-size: 0.82rem;
+  background: transparent;
+}
+
+.userprofile__modal-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.userprofile__modal-confirm {
+  flex: 1;
+  padding: 11px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #e5484d, #b52a30);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.userprofile__modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Info-modal confirm button is gold (saving, not destructive) */
+.userprofile__editform .userprofile__modal-confirm {
+  background: linear-gradient(
+    135deg,
+    var(--gold, #d4af37),
+    var(--gold-dark, #9a7b1e)
+  );
+  color: var(--black, #0a0a0a);
+}
+
+.userprofile__editform {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.userprofile__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--black-card, #161616);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 11px 13px;
+  color: var(--grey, #9a9a9a);
+  min-width: 0;
+}
+
+.userprofile__field:focus-within {
+  border-color: var(--gold, #d4af37);
+  color: var(--gold, #d4af37);
+}
+
+.userprofile__field svg {
+  flex-shrink: 0;
+}
+
+.userprofile__field input {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--white, #fff);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.userprofile__field input::placeholder {
+  color: var(--grey-dark, #4a4a4a);
+}
+
+.userprofile__error {
+  color: #ff7676;
+  font-size: 0.75rem;
+  margin: 0;
+}

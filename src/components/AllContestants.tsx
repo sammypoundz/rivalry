@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import type { Contest, Contestant } from "../data";
-import { ChevronLeft, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import "./AllContestants.css";
 
 interface AllContestantsProps {
@@ -15,12 +16,24 @@ interface AllContestantsProps {
  * ADAPTS to the roster size: the more contestants, the smaller/denser the
  * cards (auto columns), so 8 or 80 entrants both look intentional.
  */
+/** Contestants per page on the view-all grid. */
+const PAGE_SIZE = 16;
+
 export default function AllContestants({
   contest,
   roster,
   onSelect,
   onBack,
 }: AllContestantsProps) {
+  const [page, setPage] = useState(1);
+  const pages = Math.max(1, Math.ceil(roster.length / PAGE_SIZE));
+  // Keep the page in range if the roster shrinks after a live refresh.
+  useEffect(() => {
+    if (page > pages) setPage(pages);
+  }, [pages, page]);
+  const start = (page - 1) * PAGE_SIZE;
+  const visible = roster.slice(start, start + PAGE_SIZE);
+
   // Column count scales with roster size (clamped so tiny/huge lists stay sane).
   const n = roster.length;
   const cols = n <= 4 ? 2 : n <= 8 ? 3 : n <= 20 ? 4 : n <= 40 ? 5 : 6;
@@ -42,7 +55,7 @@ export default function AllContestants({
       </header>
 
       <div className="allcontestants__grid">
-        {roster.map((c, i) => (
+        {visible.map((c, i) => (
           <button
             key={c.apiId ?? c.id}
             className="allcontestants__card"
@@ -50,7 +63,7 @@ export default function AllContestants({
           >
             <div className="allcontestants__imgwrap">
               <img src={c.heroImage} alt={c.name} loading="lazy" />
-              <span className="allcontestants__rank">#{i + 1}</span>
+              <span className="allcontestants__rank">#{start + i + 1}</span>
               <span className="allcontestants__number">#{c.number}</span>
             </div>
             <div className="allcontestants__body">
@@ -63,6 +76,32 @@ export default function AllContestants({
           </button>
         ))}
       </div>
+
+      {pages > 1 && (
+        <nav className="allcontestants__pager">
+          <button
+            disabled={page <= 1}
+            onClick={() => {
+              setPage((p) => p - 1);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            <ChevronLeft size={15} /> Prev
+          </button>
+          <span>
+            Page {page} of {pages}
+          </span>
+          <button
+            disabled={page >= pages}
+            onClick={() => {
+              setPage((p) => p + 1);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            Next <ChevronRight size={15} />
+          </button>
+        </nav>
+      )}
 
       <div className="app__footer-spacer" />
     </main>

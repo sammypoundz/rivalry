@@ -1,5 +1,6 @@
 import "./Contests.css";
 import { useEffect, useRef, useState } from "react";
+import { ChevronLeft as ChevronLeftSm, ChevronRight as ChevronRightSm } from "lucide-react";
 import { formatNaira, type Contest, type Contestant } from "../data";
 import {
   ChevronLeft,
@@ -18,9 +19,10 @@ import {
   UserPlus,
   Check,
   Share2,
+  Gift,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { getMyContestants, submitContestant, uploadImage } from "../lib/api";
+import { getMyContestants, submitContestant, uploadImage, createReferral } from "../lib/api";
 import AuthOverlay from "../auth/AuthOverlay";
 
 interface ContestsProps {
@@ -165,6 +167,14 @@ function ContestDetail({
         )
       : allContestants.filter((c) => contest.contestantIds.includes(c.id))
   ).sort((a, b) => b.votes - a.votes);
+  const [rosterPage, setRosterPage] = useState(1);
+  const rosterPages = Math.max(1, Math.ceil(list.length / ROSTER_PREVIEW));
+  useEffect(() => setRosterPage(1), [contest.id]);
+  const rosterPageSafe = Math.min(rosterPage, rosterPages);
+  const rosterVisible = list.slice(
+    (rosterPageSafe - 1) * ROSTER_PREVIEW,
+    rosterPageSafe * ROSTER_PREVIEW,
+  );
 
   return (
     <main className="contest-detail">
@@ -276,7 +286,7 @@ function ContestDetail({
           <Users size={17} /> Contestants
         </h2>
         <div className="contest-detail__roster">
-          {list.slice(0, ROSTER_PREVIEW).map((c) => (
+          {rosterVisible.map((c) => (
             <button
               key={c.id}
               className="roster-row"
@@ -296,22 +306,47 @@ function ContestDetail({
             </button>
           ))}
         </div>
-        {list.length > ROSTER_PREVIEW && (
-          <button
-            className="contest-detail__view-all"
-            onClick={() =>
-              onNavigate("all-contestants", { contestId: contest.id })
-            }
-          >
-            <Users size={16} /> View all {list.length} contestants
-          </button>
+        {rosterPages > 1 && (
+          <div className="contest-detail__pager">
+            <button
+              disabled={rosterPageSafe <= 1}
+              onClick={() => setRosterPage((p) => p - 1)}
+            >
+              <ChevronLeftSm size={14} /> Prev
+            </button>
+            <span>
+              Page {rosterPageSafe} of {rosterPages}
+            </span>
+            <button
+              disabled={rosterPageSafe >= rosterPages}
+              onClick={() => setRosterPage((p) => p + 1)}
+            >
+              Next <ChevronRightSm size={14} />
+            </button>
+          </div>
         )}
+        <button
+          className="contest-detail__view-all"
+          onClick={() =>
+            onNavigate("all-contestants", { contestId: contest.id })
+          }
+        >
+          <Users size={16} /> View all {list.length} contestant{list.length === 1 ? "" : "s"}
+        </button>
       </section>
     </main>
   );
 }
 
-/** Share sheet for referring a friend to this specific contest. */
+/** Share sheet for referring a friend to this specific contest.
+ *
+ * Fully wired into the referral system: when the visitor is signed in, the
+ * shared link carries their `?ref={userId}` — anyone who signs up through it
+ * is credited to them on the backend (invite flips to "Signed up", then the
+ * ₦500 reward unlocks once the new contestant reaches 5 votes — see
+ * maybeQualifyReferral in the vote controller). The invite is also recorded
+ * here so it shows up in the Earn page immediately.
+ */
 function ReferContestModal({
   contest,
   onClose,
@@ -319,8 +354,23 @@ function ReferContestModal({
   contest: Contest;
   onClose: () => void;
 }) {
-  const link = `${window.location.origin}${window.location.pathname}#/contest/${contest.id}`;
-  const text = `Come vote for me on Rivalry — ${contest.title}! 🏆`;
+  const { user } = useAuth();
+  // The referral link carries the referrer's id; without a session the plain
+  // contest link is shared (no earning is attributed).
+  const link = user?.id
+    ? `${window.location.origin}${window.location.pathname}#/join?ref=${user.id}`
+    : `${window.location.origin}${window.location.pathname}#/contest/${contest.id}`;
+  const text = `Come join ${contest.title} with me on Rivalry! 🏆`;
+
+  // Best-effort: log the invite so it appears in the referrer's Earn list.
+  const recordInvite = () => {
+    if (!user?.id) return;
+    createReferral({
+      name: "Friend (shared link)",
+      contact: "link share",
+      contestId: contest.apiId,
+    }).catch(() => {});
+  };
 
   const shareTargets = [
     {
@@ -346,6 +396,7 @@ function ReferContestModal({
   ];
 
   const nativeShare = async () => {
+    recordInvite();
     if (navigator.share) {
       try {
         await navigator.share({ title: contest.title, text, url: link });
@@ -358,6 +409,7 @@ function ReferContestModal({
   };
 
   const copy = async () => {
+    recordInvite();
     try {
       await navigator.clipboard.writeText(link);
       onClose();
@@ -370,8 +422,23 @@ function ReferContestModal({
     <div className="share-overlay" onClick={onClose}>
       <div className="share-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="share-sheet__grabber" />
-        <h3>Refer a Friend</h3>
-        <p>Invite friends to discover and support {contest.title}.</p>
+        <div className="share-sheet__head">
+          <span className="share-sheet__head-icon"><Gift size={20} /></span>
+          <div>
+            <h3>Refer a Friend, Earn ₦500</h3>
+            <p>
+              Invite friends to join {contest.title}.
+              {user?.id
+                ? " You earn ₦500 for every friend who signs up with your link and collects 5 votes."
+                : " Sign in first so your referrals are credited to you."}
+            </p>
+          </div>
+        </div>
+        <ol className="share-sheet__steps">
+          <li><strong>Share your link</strong> with friends via WhatsApp, X or copy it below.</li>
+          <li><strong>They sign up</strong> and join a contest using your link.</li>
+          <li><strong>They collect 5 votes</strong> — ₦500 lands in your Rivalry Wallet.</li>
+        </ol>
         {typeof navigator.share !== "undefined" && (
           <button className="share-sheet__native" onClick={nativeShare}>
             <Share2 size={16} /> Share via device…
@@ -392,7 +459,7 @@ function ReferContestModal({
           ))}
         </div>
         <button className="share-sheet__copy" onClick={copy}>
-          <Check size={15} /> Copy contest link
+          <Check size={15} /> Copy {user?.id ? "referral link" : "contest link"}
         </button>
         <button className="share-sheet__cancel" onClick={onClose}>
           Cancel

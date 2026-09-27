@@ -277,19 +277,30 @@ export function useLiveData(): LiveData {
         .map(mapApiContestant);
       return { contests: mappedContests, contestants: mappedContestants };
     },
-    staleTime: 15_000,
-    // Real-time-ish sync: re-poll every 10s so votes/likes/joins/uploads made
-    // by OTHER people (other devices) show up here without a page reload.
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: true,
+    staleTime: 30_000,
+    // Real-time-ish sync: re-poll every 60s so votes/likes/joins/uploads made
+    // by OTHER devices show up without a page reload. (Was 10s — with the
+    // 1000-contestant roster that refetch churn made the app feel like it was
+    // constantly reloading. Cache-and-stale keeps the UI instant meanwhile.)
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 
   const data = query.data;
 
   return {
+    // While the first fetch is in flight (and no cache exists) return EMPTY
+    // lists — never the hardcoded seed data — so the UI doesn't flash a fake
+    // "demo" version before the real content arrives. The seed is only used
+    // as an offline fallback when the API is unreachable.
     contestants:
-      data && data.contestants.length ? data.contestants : contestants,
-    contests: data && data.contests.length ? data.contests : contests,
+      data && data.contestants.length
+        ? data.contestants
+        : query.isError
+          ? contestants
+          : [],
+    contests:
+      data && data.contests.length ? data.contests : query.isError ? contests : [],
     loading: query.isLoading,
     error: query.error instanceof Error ? query.error.message : null,
     usingFallback: query.isError,

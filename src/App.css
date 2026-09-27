@@ -2,6 +2,47 @@
   padding-bottom: 100px;
 }
 
+/* First-load boot screen — shown while real data loads (no seed flash) */
+.app-boot {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.app-boot__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--gold, #d4af37), var(--gold-dark, #9a7b1e));
+  color: var(--black, #0a0a0a);
+  font-size: 1.6rem;
+  font-weight: 800;
+  animation: app-boot-pulse 1.2s ease-in-out infinite;
+}
+
+.app-boot__label {
+  font-size: 0.8rem;
+  color: var(--grey, #999);
+}
+
+@keyframes app-boot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+}
+
 .app__footer-spacer {
   height: 20px;
 }

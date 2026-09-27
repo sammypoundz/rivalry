@@ -268,6 +268,51 @@ export async function listVotes(contestantId: string) {
   }>(`/contestants/${contestantId}/votes`);
 }
 
+/** One real vote with its contestant — a live-votes feed row. */
+export interface ApiRecentVote {
+  id: string;
+  supporterName: string | null;
+  amount: number;
+  createdAt: string;
+  contestant: {
+    id: string;
+    name: string;
+    number: number;
+    state: string;
+    occupation: string;
+    heroImage: string;
+    votes: number;
+    contestId: string;
+  };
+}
+
+// ---------- Recent votes (live feed) ----------
+export interface ApiRecentVote {
+  id: string;
+  supporterName: string | null;
+  amount: number;
+  createdAt: string;
+  contestant: {
+    id: string;
+    name: string;
+    number: number;
+    state: string;
+    occupation: string;
+    heroImage: string;
+    votes: number;
+    contestId: string;
+  };
+}
+
+/**
+ * The most recent REAL votes across the app — powers the live votes feed.
+ * Every row is an actual Vote record from the backend (nothing simulated).
+ */
+export async function listRecentVotes(contestId?: string) {
+  const q = contestId ? `?contestId=${encodeURIComponent(contestId)}` : "";
+  return request<{ success: true; votes: ApiRecentVote[] }>(`/votes/recent${q}`);
+}
+
 // ---------- My profile (logged-in user) ----------
 export interface ApiMyContestant {
   id: string;
@@ -303,6 +348,18 @@ export interface ApiMyStats {
 /** Aggregate totals across all of the user's contestant entries. */
 export async function getMyStats() {
   return request<{ success: true; stats: ApiMyStats }>("/users/me/stats");
+}
+
+/** Update the logged-in user's own details (name, email, phone). */
+export async function updateProfile(input: {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+}) {
+  return request<{ success: true; user: ApiUser }>("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function addGalleryImage(contestantId: string, image: string) {
