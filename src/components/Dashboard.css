@@ -238,9 +238,17 @@
   transition: transform 0.2s ease;
 }
 
-/* Wrapper so the banner and its pager travel together */
+/* Wrapper so the banner travels with the page — and STICKS to the top
+   while the rest of the home content scrolls underneath it. */
 .joined-contest-banners {
   margin-bottom: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  padding: 10px 0;
+  background: var(--black);
+  /* blend the padding into the page so it looks seamless */
+  margin-top: -10px;
 }
 
 .joined-contest-banners .joined-contest-banner {

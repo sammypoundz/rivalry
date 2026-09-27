@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from "react";
-import { UserPlus, ChevronLeft, Camera, Sparkles } from "lucide-react";
+import { UserPlus, ChevronLeft, Camera, Sparkles, Eye, EyeOff } from "lucide-react";
 import type { Contestant } from "../data";
 import { register, listContests, submitContestant, uploadImage } from "../lib/api";
 import "./SignUp.css";
@@ -8,13 +8,6 @@ interface SignUpProps {
   onBack: () => void;
   onComplete: (c: Contestant) => void;
 }
-
-const HERO_POOL = [
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-153142718661-ecfd6d936c79?q=80&w=1200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1200&auto=format&fit=crop",
-];
 
 export default function SignUp({ onBack, onComplete }: SignUpProps) {
   const [form, setForm] = useState({
@@ -32,6 +25,8 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Password preview (eye) in the referral signup form
+  const [showPassword, setShowPassword] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Referral: the signup link may carry ?ref=<userId> (from a contestant's
@@ -97,6 +92,12 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
       setError("Password is required (at least 6 characters).");
       return;
     }
+    // Photo is COMPULSORY — a contestant profile without a photo can't
+    // collect votes, so block the submission until one is added.
+    if (!form.photo.trim()) {
+      setError("A photo is required — add one from your device.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -108,39 +109,41 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
         referredBy: referrerId,
       });
 
-      // 2. Create the contestant record under the first live contest
+      // 2. Join them into a live contest — REQUIRED, not best-effort: a
+      // referral signup that ends without a contest entry is a broken funnel.
       const { contests } = await listContests();
       const contest =
         contests.find((c) => c.status === "voting-live") ?? contests[0];
-
-      let created = null;
-      if (contest) {
-        const res = await submitContestant(contest.id, {
-          // `number` is globally unique in the DB — wide-range pick avoids
-          // colliding with existing contestants (backend also retries).
-          number: 100000 + Math.floor(Math.random() * 899999),
-          name: form.name.trim(),
-          state: form.state.trim(),
-          age: Number(form.age) || 21,
-          occupation: form.occupation.trim() || "Contestant",
-          bio:
-            form.bio.trim() ||
-            "New contestant on Rivalry — vote to push me to the top!",
-          heroImage: form.photo.trim() || HERO_POOL[0],
-          // The signup photo is also seeded into the gallery (the backend does
-          // the same) so the owner can manage it from MySpace.
-          gallery: [form.photo.trim() || HERO_POOL[0]],
-          voteGoal: 25000,
-          votingEndsAt: new Date(
-            Date.now() + 2 * 24 * 3600 * 1000,
-          ).toISOString(),
-        });
-        created = res.contestant;
+      if (!contest) {
+        throw new Error(
+          "No contest is open right now — your account was created, please try joining again shortly.",
+        );
       }
 
+      const res = await submitContestant(contest.id, {
+        // `number` is globally unique in the DB — wide-range pick avoids
+        // colliding with existing contestants (backend also retries).
+        number: 100000 + Math.floor(Math.random() * 899999),
+        name: form.name.trim(),
+        state: form.state.trim(),
+        age: Number(form.age) || 21,
+        occupation: form.occupation.trim() || "Contestant",
+        bio:
+          form.bio.trim() ||
+          "New contestant on Rivalry — vote to push me to the top!",
+        heroImage: form.photo.trim(),
+        // The signup photo is also seeded into the gallery (the backend does
+        // the same) so the owner can manage it from MySpace.
+        gallery: [form.photo.trim()],
+        voteGoal: 25000,
+        votingEndsAt: new Date(
+          Date.now() + 2 * 24 * 3600 * 1000,
+        ).toISOString(),
+      });
+      const created = res.contestant;
+
       const id = Math.floor(Math.random() * 100000);
-      const hero =
-        created?.heroImage || form.photo.trim() || HERO_POOL[id % HERO_POOL.length];
+      const hero = created?.heroImage || form.photo.trim();
       const contestant: Contestant = {
         id,
         apiId: created?.id,
@@ -192,7 +195,7 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
               ? "Uploading photo..."
               : form.photo
                 ? "Photo added ✓"
-                : "Add a photo from your device (optional)"}
+                : "Add a photo from your device (required)"}
           </span>
           <input
             ref={photoInputRef}
@@ -239,13 +242,23 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
             value={form.email}
             onChange={set("email")}
           />
-          <input
-            className="signup__input"
-            placeholder="Password *"
-            type="password"
-            value={form.password}
-            onChange={set("password")}
-          />
+          <div className="signup__pw-wrap">
+            <input
+              className="signup__input"
+              placeholder="Password *"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={set("password")}
+            />
+            <button
+              type="button"
+              className="signup__pw-toggle"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((s) => !s)}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           <input
             className="signup__input"
             placeholder="Phone"

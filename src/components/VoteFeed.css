@@ -180,6 +180,25 @@
   transition: transform 0.15s, border-color 0.15s;
 }
 
+/* Counter ticks up with a pop each time new votes arrive */
+.vote-feed__snooze-count {
+  font-variant-numeric: tabular-nums;
+  animation: vote-feed-count-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes vote-feed-count-pop {
+  0% {
+    transform: scale(0.85);
+    color: var(--gold-light);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .vote-feed__snooze:hover {
   border-color: var(--gold);
   transform: translateY(-1px);
@@ -315,26 +334,25 @@
   /* Snooze + close sit side by side in the controls row — the old absolute
      position made Close overlap the Snooze button so neither was tappable. */
   .vote-feed__close {
-    position: static;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(18, 18, 18, 0.85);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    color: var(--grey);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-    transition: background 0.15s, color 0.15s;
+    display: none;
   }
 
-  .vote-feed__close:hover {
-    color: var(--white);
-  }
-
-  /* Snooze pill keeps its mobile position, re-enable pointer events */
+  /* Snooze + close sat side by side — with close removed the pill owns
+     the controls row (aligned left on mobile is handled by .vote-feed__snooze) */
+/* Mobile: pill docked top-LEFT, clear of the toast that drops from the top */
+@media (max-width: 767px) {
   .vote-feed__snooze {
+    left: 12px;
+    right: auto;
+    pointer-events: auto;
+  }
+}
+
+  /* The vote-details popup lives inside this pointer-events:none container
+     on mobile — it must re-enable clicks for itself and ALL its children,
+     otherwise the close button taps fall straight through. */
+  .vote-detail,
+  .vote-detail * {
     pointer-events: auto;
   }
 
@@ -410,9 +428,10 @@
   }
 }
 
-/* Desktop: no snooze option — the panel is visible anyway */
+/* Desktop: no snooze option — the panel is visible anyway. The close
+   button still works. */
 @media (min-width: 1024px) {
-  .vote-detail__controls {
+  .vote-detail__snooze {
     display: none;
   }
 
@@ -438,6 +457,26 @@
 
 .vote-detail__snooze:hover {
   background: rgba(212, 175, 55, 0.16);
+  border-color: var(--gold);
+}
+
+/* Close button in the vote-detail popup (sits right of snooze) */
+.vote-detail__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(18, 18, 18, 0.9);
+  color: var(--grey);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.vote-detail__close:hover {
+  color: var(--white);
   border-color: var(--gold);
 }
 

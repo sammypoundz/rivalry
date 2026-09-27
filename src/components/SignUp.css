@@ -148,3 +148,34 @@
   text-align: center;
   line-height: 1.5;
 }
+
+/* Password field with show/hide (eye) toggle */
+.signup__pw-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.signup__pw-wrap .signup__input {
+  width: 100%;
+  padding-right: 42px; /* room for the eye button */
+}
+
+.signup__pw-toggle {
+  position: absolute;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: var(--grey, #9a9a9a);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.signup__pw-toggle:hover {
+  color: var(--gold, #d4af37);
+  background: rgba(212, 175, 55, 0.1);
+}

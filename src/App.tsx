@@ -11,7 +11,6 @@ import Earn from "./components/Earn";
 import BottomNav, { type Tab } from "./components/BottomNav";
 import DesktopSidebar from "./components/DesktopSidebar";
 import VoteFeed from "./components/VoteFeed";
-import ScrollSticker from "./components/ScrollSticker";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import AuthOverlay from "./auth/AuthOverlay";
 import { getMyContestants } from "./lib/api";
@@ -257,13 +256,15 @@ function MainApp() {
   const [showAuth, setShowAuth] = useState(false);
   const previewing = !user && !deepLinkVote;
   useEffect(() => {
-    if (!previewing) {
+    // The referral signup screen (#/join?ref=…) is itself a conversion path —
+    // never drop the login wall over it, it would obstruct the registration.
+    if (!previewing || tab === "signup") {
       setShowAuth(false);
       return;
     }
     const t = setTimeout(() => setShowAuth(true), 10_000);
     return () => clearTimeout(t);
-  }, [previewing]);
+  }, [previewing, tab]);
 
   // A gated action (earn/profile/join) was tapped while signed out: once the
   // visitor signs in or creates an account, run the action they were blocked on.
@@ -310,9 +311,6 @@ function MainApp() {
           if (found) openProfile(found);
         }}
       />
-      {tab === "dashboard" && <ScrollSticker />}
-      {/* The "My Contests" screen REPLACES the dashboard — if the dashboard
-          stayed mounted, the full-screen list would render underneath it. */}
       {tab === "dashboard" && !allContestantsScreen && !showMyContests && (
         <Dashboard
           onSelect={openProfile}
@@ -463,7 +461,9 @@ function MainApp() {
         </button>
       )}
 
-      {previewing && showAuth && (
+      {/* Preview mode login wall — suppressed on the signup screen so a
+          friend registering through a referral link is never obstructed. */}
+      {previewing && showAuth && tab !== "signup" && (
         <AuthOverlay
           dismissible
           onDismiss={() => setShowAuth(false)}

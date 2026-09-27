@@ -65,6 +65,7 @@ img {
 @media (min-width: 768px) {
   main,
   .dashboard,
+  .earn,
   .leaderboard,
   .userprofile,
   .wallet,
@@ -86,6 +87,7 @@ img {
 @media (min-width: 1024px) {
   main,
   .dashboard,
+  .earn,
   .leaderboard,
   .userprofile,
   .wallet,

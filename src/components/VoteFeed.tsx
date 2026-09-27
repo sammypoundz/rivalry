@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listRecentVotes, type ApiRecentVote } from "../lib/api";
 import {
@@ -35,6 +35,33 @@ const timeAgo = (iso: string) => {
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   return `${Math.floor(s / 86400)}d ago`;
 };
+
+/** Counts the value UP to `target` with a short stepped animation — used for
+    the snoozed vote counter so new votes visibly tick the number upward. */
+function useCountUp(target: number) {
+  const [display, setDisplay] = useState(target);
+  const prevRef = useRef(target);
+  useEffect(() => {
+    const from = prevRef.current;
+    prevRef.current = target;
+    if (target <= from) {
+      setDisplay(target);
+      return;
+    }
+    const steps = 14;
+    let i = 0;
+    const t = window.setInterval(() => {
+      i += 1;
+      setDisplay(Math.round(from + ((target - from) * i) / steps));
+      if (i >= steps) {
+        setDisplay(target);
+        window.clearInterval(t);
+      }
+    }, 40);
+    return () => window.clearInterval(t);
+  }, [target]);
+  return display;
+}
 
 const voterLabel = (v: ApiRecentVote) => v.supporterName || "Someone";
 
@@ -78,20 +105,19 @@ export default function VoteFeed({
 
   const [start, setStart] = useState(0);
   const [snoozed, setSnoozed] = useState(false);
-  const [closed, setClosed] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   // Rotate the visible window; wrapping around means "start afresh" once all
   // current votes have been shown and nothing new has arrived. Paused while
   // the details popup is open so the list doesn't churn underneath it.
   useEffect(() => {
-    if (snoozed || closed || detailId || votes.length === 0) return;
+    if (snoozed || detailId || votes.length === 0) return;
     const t = window.setInterval(
       () => setStart((s) => (s + 1 >= votes.length ? 0 : s + 1)),
       ROTATE_MS,
     );
     return () => window.clearInterval(t);
-  }, [snoozed, closed, detailId, votes.length]);
+  }, [snoozed, detailId, votes.length]);
 
   // Keep the window in range if the list shrinks between refetches.
   useEffect(() => {
@@ -112,12 +138,17 @@ export default function VoteFeed({
     return () => window.removeEventListener("keydown", onKey);
   }, [detail]);
 
-  // Close REALLY stops the toasts: no rotation, no rows rendered. The feed
-  // comes back the next time the page mounts (a fresh visit / reload) —
-  // closing was confusing before because the feed kept re-appearing.
-  if (closed) return null;
+  // Leaving the home page hides the feed (mobile) — the details popup must
+  // close with it, otherwise returning home reopens a stale popup.
+  useEffect(() => {
+    if (!mobileVisible) setDetailId(null);
+  }, [mobileVisible]);
 
-  // ---- Snoozed: tiny pill with bell icon + votes counter ----
+  // Snoozed is the only way to silence the toasts (per product decision —
+  // there is no separate "close notifications" button).
+  const counted = useCountUp(totalSeen);
+
+  // ---- Snoozed: tiny pill with bell icon + animated votes counter ----
   if (snoozed) {
     return (
       <button
@@ -126,10 +157,13 @@ export default function VoteFeed({
         title="Show live votes"
       >
         <Bell size={14} />
-        <span>{totalSeen.toLocaleString()} votes</span>
+        <span key={totalSeen} className="vote-feed__snooze-count">
+          {counted.toLocaleString()} votes
+        </span>
       </button>
     );
   }
+
 
   return (
     <aside
@@ -144,13 +178,6 @@ export default function VoteFeed({
             onClick={() => setSnoozed(true)}
           >
             <BellOff size={13} />
-          </button>
-          <button
-            className="vote-feed__close"
-            aria-label="Hide votes"
-            onClick={() => setClosed(true)}
-          >
-            <X size={14} />
           </button>
         </div>
         <h2 className="vote-feed__heading">
@@ -209,6 +236,13 @@ export default function VoteFeed({
                 }}
               >
                 <BellOff size={13} /> <span>Snooze feed</span>
+              </button>
+              <button
+                className="vote-detail__close"
+                aria-label="Close"
+                onClick={() => setDetailId(null)}
+              >
+                <X size={15} />
               </button>
             </div>
 
