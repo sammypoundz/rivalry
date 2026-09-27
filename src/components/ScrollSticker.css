@@ -63,8 +63,8 @@
 
 @media (min-width: 1024px) {
   .scroll-sticker {
-    /* stay within the centered app column on desktop */
-    right: calc(50% - var(--max-width) / 2 - 80px);
+    /* stay within the centered 560px app column on desktop */
+    right: calc(50% - 264px);
     top: 16px;
   }
 }

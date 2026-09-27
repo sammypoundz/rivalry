@@ -21,7 +21,8 @@ interface VoteFeedProps {
   onOpenContestant?: (apiId: string) => void;
 }
 
-const WINDOW = 3; // votes shown at once
+const WINDOW_DESKTOP = 3; // votes shown at once (tablet + desktop panel)
+const WINDOW_MOBILE = 1; // mobile shows ONE toast at a time
 /** Slow rotation — fast cycling read like the page was "reloading". */
 const ROTATE_MS = 6000;
 /** How often the feed re-syncs with the backend (realtime-ish). */
@@ -63,6 +64,18 @@ export default function VoteFeed({
   });
   const votes = data?.votes ?? [];
 
+  // Mobile shows one toast at a time, the desktop panel shows a few.
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia("(max-width: 767px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  const WINDOW = isMobile ? WINDOW_MOBILE : WINDOW_DESKTOP;
+
   const [start, setStart] = useState(0);
   const [snoozed, setSnoozed] = useState(false);
   const [closed, setClosed] = useState(false);
@@ -99,6 +112,9 @@ export default function VoteFeed({
     return () => window.removeEventListener("keydown", onKey);
   }, [detail]);
 
+  // Close REALLY stops the toasts: no rotation, no rows rendered. The feed
+  // comes back the next time the page mounts (a fresh visit / reload) —
+  // closing was confusing before because the feed kept re-appearing.
   if (closed) return null;
 
   // ---- Snoozed: tiny pill with bell icon + votes counter ----
@@ -193,13 +209,6 @@ export default function VoteFeed({
                 }}
               >
                 <BellOff size={13} /> <span>Snooze feed</span>
-              </button>
-              <button
-                className="vote-feed__close"
-                aria-label="Close"
-                onClick={() => setDetailId(null)}
-              >
-                <X size={14} />
               </button>
             </div>
 

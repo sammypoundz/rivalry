@@ -7,6 +7,14 @@
     {
       "source": "/og/vote/:id/image",
       "destination": "https://rivalrybackend.onrender.com/api/og/vote/:id/image"
+    },
+    {
+      "source": "/og/contest/:id",
+      "destination": "https://rivalrybackend.onrender.com/api/og/contest/:id"
+    },
+    {
+      "source": "/og/contest/:id/image",
+      "destination": "https://rivalrybackend.onrender.com/api/og/contest/:id/image"
     }
   ]
 }

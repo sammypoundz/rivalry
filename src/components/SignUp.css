@@ -98,6 +98,31 @@
   outline: none;
 }
 
+.signup__photo-btn {
+  align-self: flex-start;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--black);
+  font-weight: 700;
+  font-size: 12px;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+}
+
+.signup__photo-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.signup__photo-preview {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
 .signup__error {
   color: #ff7676;
   font-size: 12.5px;

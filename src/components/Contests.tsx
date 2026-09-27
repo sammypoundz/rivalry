@@ -1,6 +1,6 @@
 import "./Contests.css";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft as ChevronLeftSm, ChevronRight as ChevronRightSm } from "lucide-react";
+import { Search } from "lucide-react";
 import { formatNaira, type Contest, type Contestant } from "../data";
 import {
   ChevronLeft,
@@ -22,7 +22,7 @@ import {
   Gift,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { getMyContestants, submitContestant, uploadImage, createReferral } from "../lib/api";
+import { getMyContestants, submitContestant, uploadImage } from "../lib/api";
 import AuthOverlay from "../auth/AuthOverlay";
 
 interface ContestsProps {
@@ -167,14 +167,22 @@ function ContestDetail({
         )
       : allContestants.filter((c) => contest.contestantIds.includes(c.id))
   ).sort((a, b) => b.votes - a.votes);
-  const [rosterPage, setRosterPage] = useState(1);
-  const rosterPages = Math.max(1, Math.ceil(list.length / ROSTER_PREVIEW));
-  useEffect(() => setRosterPage(1), [contest.id]);
-  const rosterPageSafe = Math.min(rosterPage, rosterPages);
-  const rosterVisible = list.slice(
-    (rosterPageSafe - 1) * ROSTER_PREVIEW,
-    rosterPageSafe * ROSTER_PREVIEW,
-  );
+  // Search replaces pagination — type a name/number/state to narrow the list.
+  const [query, setQuery] = useState("");
+  useEffect(() => setQuery(""), [contest.id]);
+  const q = query.trim().toLowerCase();
+  const searched = q
+    ? list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          String(c.number).includes(q) ||
+          c.state.toLowerCase().includes(q) ||
+          (c.occupation ?? "").toLowerCase().includes(q),
+      )
+    : list;
+  // No pagination: show the first few ranked contestants, plus the
+  // "View all" button for the complete grid.
+  const rosterVisible = searched.slice(0, ROSTER_PREVIEW);
 
   return (
     <main className="contest-detail">
@@ -285,6 +293,24 @@ function ContestDetail({
         <h2>
           <Users size={17} /> Contestants
         </h2>
+        <div className="contest-detail__search">
+          <Search size={15} />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${list.length} contestants…`}
+          />
+          {query && (
+            <button
+              className="contest-detail__search-clear"
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
         <div className="contest-detail__roster">
           {rosterVisible.map((c) => (
             <button
@@ -305,26 +331,12 @@ function ContestDetail({
               </div>
             </button>
           ))}
+          {searched.length === 0 && (
+            <p className="contest-detail__search-empty">
+              No contestant matches “{query}”.
+            </p>
+          )}
         </div>
-        {rosterPages > 1 && (
-          <div className="contest-detail__pager">
-            <button
-              disabled={rosterPageSafe <= 1}
-              onClick={() => setRosterPage((p) => p - 1)}
-            >
-              <ChevronLeftSm size={14} /> Prev
-            </button>
-            <span>
-              Page {rosterPageSafe} of {rosterPages}
-            </span>
-            <button
-              disabled={rosterPageSafe >= rosterPages}
-              onClick={() => setRosterPage((p) => p + 1)}
-            >
-              Next <ChevronRightSm size={14} />
-            </button>
-          </div>
-        )}
         <button
           className="contest-detail__view-all"
           onClick={() =>
@@ -355,22 +367,18 @@ function ReferContestModal({
   onClose: () => void;
 }) {
   const { user } = useAuth();
-  // The referral link carries the referrer's id; without a session the plain
-  // contest link is shared (no earning is attributed).
-  const link = user?.id
-    ? `${window.location.origin}${window.location.pathname}#/join?ref=${user.id}`
-    : `${window.location.origin}${window.location.pathname}#/contest/${contest.id}`;
+  // The referral link goes through the OG landing page (/og/contest/:id) so
+  // social apps (WhatsApp/X/Facebook) show the contest's cover image as the
+  // link preview. The OG route preserves ?ref= and deep-links into the join
+  // flow, so the referral is still attributed when the friend signs up.
+  // Without a session the plain contest OG link is shared (no earning is
+  // attributed).
+  const ogBase = `${window.location.origin}/og/contest/${contest.apiId}`;
+  const link = user?.id ? `${ogBase}?ref=${user.id}` : ogBase;
   const text = `Come join ${contest.title} with me on Rivalry! 🏆`;
-
-  // Best-effort: log the invite so it appears in the referrer's Earn list.
-  const recordInvite = () => {
-    if (!user?.id) return;
-    createReferral({
-      name: "Friend (shared link)",
-      contact: "link share",
-      contestId: contest.apiId,
-    }).catch(() => {});
-  };
+  // NOTE: we intentionally do NOT record an invite when the link is merely
+  // copied or shared — a referral is only recorded on the backend when the
+  // friend actually registers through the link (register controller).
 
   const shareTargets = [
     {
@@ -396,7 +404,6 @@ function ReferContestModal({
   ];
 
   const nativeShare = async () => {
-    recordInvite();
     if (navigator.share) {
       try {
         await navigator.share({ title: contest.title, text, url: link });
@@ -409,7 +416,6 @@ function ReferContestModal({
   };
 
   const copy = async () => {
-    recordInvite();
     try {
       await navigator.clipboard.writeText(link);
       onClose();
@@ -422,12 +428,19 @@ function ReferContestModal({
     <div className="share-overlay" onClick={onClose}>
       <div className="share-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="share-sheet__grabber" />
+        <button
+          className="share-sheet__dismiss"
+          aria-label="Close"
+          onClick={onClose}
+        >
+          <X size={15} />
+        </button>
         <div className="share-sheet__head">
-          <span className="share-sheet__head-icon"><Gift size={20} /></span>
+          <span className="share-sheet__head-icon"><Gift size={22} /></span>
           <div>
             <h3>Refer a Friend, Earn ₦500</h3>
             <p>
-              Invite friends to join {contest.title}.
+              Invite friends to join <strong>{contest.title}</strong>.
               {user?.id
                 ? " You earn ₦500 for every friend who signs up with your link and collects 5 votes."
                 : " Sign in first so your referrals are credited to you."}
@@ -435,9 +448,9 @@ function ReferContestModal({
           </div>
         </div>
         <ol className="share-sheet__steps">
-          <li><strong>Share your link</strong> with friends via WhatsApp, X or copy it below.</li>
-          <li><strong>They sign up</strong> and join a contest using your link.</li>
-          <li><strong>They collect 5 votes</strong> — ₦500 lands in your Rivalry Wallet.</li>
+          <li><span className="share-sheet__step-num">1</span><span><strong>Share your link</strong> with friends via WhatsApp, X or copy it below.</span></li>
+          <li><span className="share-sheet__step-num">2</span><span><strong>They sign up</strong> and join a contest using your link.</span></li>
+          <li><span className="share-sheet__step-num">3</span><span><strong>They collect 5 votes</strong> — ₦500 lands in your Rivalry Wallet.</span></li>
         </ol>
         {typeof navigator.share !== "undefined" && (
           <button className="share-sheet__native" onClick={nativeShare}>

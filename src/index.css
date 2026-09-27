@@ -57,3 +57,42 @@ img {
   width: 0;
   height: 0;
 }
+
+/* ===== Desktop / tablet layout ==========================================
+   The fixed side panels (desktop sidebar, live-votes feed) are positioned
+   around a centered --max-width column. The main screens must live inside
+   that same column, otherwise the panels overlap the content. */
+@media (min-width: 768px) {
+  main,
+  .dashboard,
+  .leaderboard,
+  .userprofile,
+  .wallet,
+  .profile,
+  .signup,
+  .myspace,
+  .earn__panel {
+    max-width: var(--max-width);
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+}
+
+/* Desktop sidebar only exists at >=1024px — widen the content a touch so
+   the page doesn't feel sparse between the two 260px panels. !important
+   wins over per-page max-widths (.contests-page is 720px) that would
+   otherwise overlap the fixed side panels. */
+@media (min-width: 1024px) {
+  main,
+  .dashboard,
+  .leaderboard,
+  .userprofile,
+  .wallet,
+  .profile,
+  .signup,
+  .myspace,
+  .earn__panel {
+    max-width: 560px !important;
+  }
+}

@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { UserPlus, ChevronLeft, Camera, Sparkles } from "lucide-react";
 import type { Contestant } from "../data";
-import { register, listContests, submitContestant } from "../lib/api";
+import { register, listContests, submitContestant, uploadImage } from "../lib/api";
 import "./SignUp.css";
 
 interface SignUpProps {
@@ -31,6 +31,8 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
   });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Referral: the signup link may carry ?ref=<userId> (from a contestant's
   // share link) — the new account is then linked to that referrer.
@@ -47,6 +49,43 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
       >,
     ) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // Pick a photo from the device, upload it to Cloudinary and use the CDN
+  // URL as the contestant's hero image. Falls back to a URL paste for
+  // desktop users who already have a link.
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file (JPG, PNG, etc.).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Photo is too large — please pick one under 8 MB.");
+      return;
+    }
+    setError("");
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Could not read that file"));
+        reader.readAsDataURL(file);
+      });
+      const res = await uploadImage(dataUrl);
+      setForm((f) => ({ ...f, photo: res.url }));
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? `Photo upload failed: ${err.message}`
+          : "Photo upload failed — please try again.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,14 +188,30 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
         <label className="signup__photo">
           <Camera size={18} />
           <span>
-            {form.photo ? "Photo URL set ✓" : "Add a hero photo URL (optional)"}
+            {uploading
+              ? "Uploading photo..."
+              : form.photo
+                ? "Photo added ✓"
+                : "Add a photo from your device (optional)"}
           </span>
           <input
-            type="url"
-            placeholder="https://..."
-            value={form.photo}
-            onChange={set("photo")}
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={pickPhoto}
           />
+          <button
+            type="button"
+            className="signup__photo-btn"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {form.photo ? "Change photo" : "Choose photo"}
+          </button>
+          {form.photo && (
+            <img className="signup__photo-preview" src={form.photo} alt="Your photo" />
+          )}
         </label>
 
         <div className="signup__row">

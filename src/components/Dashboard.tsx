@@ -1,10 +1,8 @@
-import { useState } from "react";
 import { type Contestant, type Contest, formatNaira } from "../data";
 import { rosterOf } from "../lib/queries";
 import {
   Swords,
   ChevronRight,
-  ChevronLeft,
   Gift,
   LogIn,
   ExternalLink,
@@ -35,11 +33,11 @@ const medals = ["🥇", "🥈", "🥉"];
 
 
 export default function Dashboard({ onSelect, joinedContests, onOpenContest, contests, allContestants, onEarn, onSignIn, onViewAllContestants, onSeeAllJoined }: DashboardProps) {
-  // Joined-contest banners are paginated one per page so users in several
-  // contests don't get a wall of banners pushing the real content down.
   const banners = joinedContests ?? [];
-  const [bannerPage, setBannerPage] = useState(0);
-  const banner = banners.length ? banners[bannerPage % banners.length] : null;
+  // Show ONE joined-contest banner at a time — when the user has joined more
+  // than one contest, a "View all" button (onSeeAllJoined) opens the full
+  // My Contests screen instead of paginating banners and pushing content down.
+  const banner = banners[0] ?? null;
 
   return (
     <div className="dashboard">
@@ -62,8 +60,8 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
         </div>
       </header>
 
-      {/* One banner per page with pager controls when the user has joined
-          multiple contests (votes update live via the shared query cache). */}
+      {/* ONE banner — when the user is in several contests a "See all"
+          button opens the full My Contests screen (no pager). */}
       {banner && (
         <div className="joined-contest-banners">
           <button
@@ -80,33 +78,14 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
             <ChevronRight size={18} />
           </button>
           {banners.length > 1 && (
-            <div className="joined-contest-pager">
-              <button
-                disabled={bannerPage === 0}
-                onClick={() => setBannerPage((p) => p - 1)}
-                aria-label="Previous joined contest"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <span>
-                {bannerPage + 1} / {banners.length}
-              </span>
-              <button
-                disabled={bannerPage >= banners.length - 1}
-                onClick={() => setBannerPage((p) => p + 1)}
-                aria-label="Next joined contest"
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
+            <button
+              className="joined-contest-seeall"
+              onClick={() => onSeeAllJoined?.()}
+            >
+              See all {banners.length} joined contest{banners.length === 1 ? "" : "s"}
+              <ChevronRight size={13} strokeWidth={2.2} />
+            </button>
           )}
-          <button
-            className="joined-contest-seeall"
-            onClick={() => onSeeAllJoined?.()}
-          >
-            See all {banners.length} joined contest{banners.length === 1 ? "" : "s"}
-            <ChevronRight size={13} strokeWidth={2.2} />
-          </button>
         </div>
       )}
 

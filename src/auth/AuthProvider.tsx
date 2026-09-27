@@ -18,6 +18,8 @@ interface AuthContextValue {
     identifier: string,
     password: string,
     fullName: string,
+    /** Mongo ObjectId of the referrer when the signup came via their link. */
+    referredBy?: string,
   ) => Promise<void>;
   signOut: () => void;
   /** Edit the logged-in user's own details (name/email/phone). */
@@ -53,11 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(
-    async (identifier: string, password: string, fullName: string) => {
+    async (identifier: string, password: string, fullName: string, referredBy?: string) => {
       const input = api.isEmail(identifier)
         ? { email: identifier.trim(), password, fullName }
         : { phone: identifier.trim(), password, fullName };
-      const res = await api.register(input);
+      // Attribution: when the signup came through someone's referral link
+      // (?ref=<userId> in the URL), the backend links the new account to that
+      // referrer so their reward unlocks at 5 votes.
+      const referrer =
+        referredBy ||
+        window.location.hash.match(/ref=([0-9a-fA-F]{24})/)?.[1] ||
+        new URLSearchParams(window.location.search).get("ref") ||
+        undefined;
+      const res = await api.register(referrer ? { ...input, referredBy: referrer } : input);
       setUser(res.user);
     },
     [],

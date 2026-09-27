@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Sparkles, Lock, Mail, Phone, User as UserIcon, X, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { isEmail } from "../lib/api";
@@ -24,6 +24,18 @@ export default function AuthOverlay({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Referral attribution: shared links may carry ?ref=<userId> (in the hash
+  // or query). AuthProvider.signUp picks it up automatically — we only read
+  // it here to tell the visitor their inviter gets credited.
+  const referred = useMemo(
+    () =>
+      !!(
+        window.location.hash.match(/ref=([0-9a-fA-F]{24})/) ||
+        new URLSearchParams(window.location.search).get("ref")
+      ),
+    [],
+  );
 
   const identifierIsEmail = isEmail(form.identifier);
 
@@ -171,7 +183,13 @@ export default function AuthOverlay({
             </button>
           </label>
 
-          {error && <p className="auth-overlay__error">{error}</p>}
+          {referred && (
+          <p className="auth-overlay__error" style={{ color: "#d4af37", fontWeight: 500 }}>
+            🎉 You were invited by a friend — they get credited when you join!
+          </p>
+        )}
+
+        {error && <p className="auth-overlay__error">{error}</p>}
 
           <button
             className="auth-overlay__submit"

@@ -311,7 +311,9 @@ function MainApp() {
         }}
       />
       {tab === "dashboard" && <ScrollSticker />}
-      {tab === "dashboard" && !allContestantsScreen && (
+      {/* The "My Contests" screen REPLACES the dashboard — if the dashboard
+          stayed mounted, the full-screen list would render underneath it. */}
+      {tab === "dashboard" && !allContestantsScreen && !showMyContests && (
         <Dashboard
           onSelect={openProfile}
           joinedContests={contests.filter((c) =>

@@ -1,0 +1,51 @@
+export default async function run(page) {
+  const out = {};
+  // Desktop refer modal
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("http://localhost:5173");
+  await page.waitForSelector(".contest-card,.dashboard", { timeout: 20000 });
+  const cc = page.locator(".contest-card").first();
+  if (await cc.count()) {
+    await cc.click();
+    await page.waitForTimeout(800);
+  }
+  const refer = page.locator(".contest-detail__refer");
+  if (await refer.count()) {
+    await refer.click();
+    await page.waitForTimeout(500);
+    out.referModal = await page.evaluate(
+      () => !!document.querySelector(".share-sheet__dismiss"),
+    );
+    await page.screenshot({ path: "qa-refer.png" });
+  }
+  // Mobile vote-detail popup
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(800);
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll(".bottom-nav__item")].find((x) =>
+      x.textContent.toLowerCase().includes("home"),
+    );
+    if (b) b.click();
+  });
+  await page.waitForTimeout(1200);
+  const row = page.locator(".vote-feed__row").first();
+  if (await row.count()) {
+    await row.click({ timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    out.detail = await page.evaluate(() => {
+      const d = document.querySelector(".vote-detail");
+      if (!d) return "not-open";
+      const c = document.querySelector(".vote-detail__controls");
+      const close = document.querySelector(
+        ".vote-detail__controls .vote-feed__close",
+      );
+      return {
+        z: getComputedStyle(d).zIndex,
+        snoozeTop: c ? Math.round(c.getBoundingClientRect().top) : null,
+        hasCloseBtn: !!close,
+      };
+    });
+    await page.screenshot({ path: "qa-detail2.png" });
+  }
+  return out;
+}

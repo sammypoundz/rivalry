@@ -58,12 +58,16 @@
   transform: scale(0.95);
 }
 
-/* Tablet: align with the main body, which is shifted right by 150px */
-@media (min-width: 768px) and (max-width: 1023px) {
+/* Desktop: match the centered 560px content column instead of the mobile
+   480px bar — and hide the in-flow vote button, the sticky bar replaces it. */
+@media (min-width: 768px) {
   .sticky-bar {
-    left: 150px;
-    transform: none;
-    width: calc(100% - 150px);
-    max-width: none;
+    max-width: 560px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .vote-now {
+    display: none;
   }
 }
