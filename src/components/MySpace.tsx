@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Trophy, Plus, Trash2, Loader2, ImagePlus, Swords } from "lucide-react";
+import { Trophy, Plus, Trash2, Loader2, ImagePlus, Swords, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getMyContestants,
@@ -50,6 +50,10 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
   const likeCounts: Record<string, number> = likesData?.counts ?? {};
   const likedByMe: Set<string> = new Set(likesData?.likedImages ?? []);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  // Photo pending deletion — the redesigned confirmation modal (replaces the
+  // old window.confirm which looked nothing like the app).
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const toggleImageLike = async (image: string) => {
     if (!active) return;
@@ -118,14 +122,7 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
   };
 
   const handleDelete = async (image: string) => {
-    if (!active || uploading) return;
-    // Ask before removing — a tap on the trash icon must not nuke a photo
-    if (
-      !window.confirm(
-        "Delete this photo from your gallery? This can't be undone.",
-      )
-    )
-      return;
+    if (!active || uploading || deleting) return;
     // Optimistic removal
     const prev = active.gallery;
     queryClient.setQueryData<{ success: true; contestants: ApiMyContestant[] }>(
@@ -141,8 +138,7 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
         },
     );
     try {
-      const res = await removeGalleryImage(active.id, image);
-      queryClient.setQueryData<{ success: true; contestants: ApiMyContestant[] }>(
+      const res = await removeGalleryImage(active.id, image);      queryClient.setQueryData<{ success: true; contestants: ApiMyContestant[] }>(
         qk.myContestants,
         (old) =>
           old && {
@@ -165,6 +161,9 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
           },
       );
       flash(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -267,7 +266,7 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
                     aria-label="Delete photo"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(img);
+                      setPendingDelete(img);
                     }}
                   >
                     <Trash2 size={14} />
@@ -316,6 +315,68 @@ export default function MySpace({ onOpenContest }: { onOpenContest?: (contest: A
           onClose={() => setViewerIndex(null)}
           name={active.name}
         />
+      )}
+
+      {/* Delete-photo confirmation modal — in-app dialog with a preview of
+          the exact photo being removed (replaces window.confirm). */}
+      {pendingDelete && (
+        <div
+          className="myspace__confirm"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !deleting && setPendingDelete(null)}
+        >
+          <div
+            className="myspace__confirm-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="myspace__confirm-close"
+              aria-label="Close"
+              disabled={deleting}
+              onClick={() => setPendingDelete(null)}
+            >
+              <X size={15} />
+            </button>
+            <span className="myspace__confirm-icon">
+              <Trash2 size={22} />
+            </span>
+            <h3 className="myspace__confirm-title">Delete photo?</h3>
+            <img
+              className="myspace__confirm-thumb"
+              src={pendingDelete}
+              alt="Photo to delete"
+            />
+            <p className="myspace__confirm-text">
+              This photo will be removed from your gallery and your public
+              profile. This can’t be undone.
+            </p>
+            <div className="myspace__confirm-actions">
+              <button
+                className="myspace__confirm-cancel"
+                disabled={deleting}
+                onClick={() => setPendingDelete(null)}
+              >
+                Keep photo
+              </button>
+              <button
+                className="myspace__confirm-delete"
+                disabled={deleting}
+                onClick={() => handleDelete(pendingDelete)}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 size={14} className="myspace__spinner" /> Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} /> Delete photo
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

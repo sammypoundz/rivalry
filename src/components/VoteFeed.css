@@ -345,9 +345,14 @@
     left: 12px;
     right: auto;
     pointer-events: auto;
-    /* Mobile: sit UNDER the sticky joined-contest banner (z 60) so the
-       snoozed pill slides beneath "You're in: …" when the user scrolls. */
+    /* Mobile: BELOW the sticky joined-contest banner (z 60) — when the home
+       page is scrolled the pill slides under the "You're in: …" banner.
+       It's offset downward so it emerges just beneath the banner instead of
+       being swallowed by the banner's opaque background. */
     z-index: 50;
+    /* Measured live by VoteFeed: below the stuck banner (+"See all") when
+       scrolled, back at the top (12px) when the page is not scrolled. */
+    top: var(--snooze-top, 12px);
   }
 }
 
@@ -359,10 +364,9 @@
   pointer-events: auto;
 }
 
-  /* Declared last so it wins over .vote-feed { display: flex } above */
-  .vote-feed--mobile-hidden {
-    display: none;
-  }
+/* Hidden feed must beat the media-query display:flex rules above */
+.vote-feed--mobile-hidden {
+  display: none;
 }
 
 /* ============================================================
@@ -376,6 +380,22 @@
   z-index: 3000;
   display: flex;
   align-items: flex-end; /* mobile: bottom sheet */
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 0;
+}
+
+/* The popup is portalled to <body> (out of the narrow vote-feed panel) so it
+   can be a real full-viewport modal on desktop. Scoped to its portal parent
+   with !important so no inherited/later rule can knock it back into page
+   flow — that regression rendered it as a 230px box clipped by the panel. */
+body > .vote-detail {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex;
+  align-items: flex-end;
   justify-content: center;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(6px);
@@ -410,17 +430,48 @@
 
 .vote-detail__controls {
   display: flex;
-  justify-content: flex-start;
+  /* Snooze on the left, Close pushed to the far right — the X is now
+     impossible to miss on any screen size. */
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 14px;
 }
 
-/* Mobile: snooze pinned to the top-left of the popup card */
+/* Close button in the vote-detail popup — prominent, at the END of the
+   controls row (right edge of the card). */
+.vote-detail__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(212, 175, 55, 0.55);
+  background: rgba(18, 18, 18, 0.9);
+  color: var(--gold, #d4af37);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.vote-detail__close:hover {
+  color: var(--white, #fff);
+  border-color: var(--gold, #d4af37);
+  background: rgba(212, 175, 55, 0.16);
+}
+
+.vote-detail__close:active {
+  transform: scale(0.92);
+}
+
+/* Mobile: snooze pinned to the top-left of the popup card, close at the
+   top-right — the row spans the card so both ends are reachable. */
 @media (max-width: 767px) {
   .vote-detail__controls {
     position: absolute;
     top: 10px;
     left: 10px;
+    right: 10px;
     margin: 0;
     z-index: 2;
   }
@@ -460,26 +511,6 @@
 
 .vote-detail__snooze:hover {
   background: rgba(212, 175, 55, 0.16);
-  border-color: var(--gold);
-}
-
-/* Close button in the vote-detail popup (sits right of snooze) */
-.vote-detail__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  background: rgba(18, 18, 18, 0.9);
-  color: var(--grey);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.vote-detail__close:hover {
-  color: var(--white);
   border-color: var(--gold);
 }
 
@@ -607,23 +638,79 @@
 
 /* Desktop / tablet: centered modal card instead of bottom sheet */
 @media (min-width: 640px) {
-  .vote-detail {
+  body > .vote-detail {
     align-items: center;
     padding: 24px;
   }
-
   .vote-detail__card {
-    max-width: 400px;
+    /* Roomier on desktop — the mobile bottom-sheet width crammed the
+       contestant + vote rows. */
+    max-width: 460px;
     border-radius: 24px;
     border-bottom: 1px solid var(--grey-dark, #4a4a4a);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    /* No bottom-nav clearance needed on desktop */
+    padding: 20px 22px;
+    max-height: 86vh;
+  }
+  /* Let long voter names wrap instead of pushing the row out of the card */
+  .vote-detail__vote {
+    flex-wrap: wrap;
+  }
+  .vote-detail__votemeta strong,
+  .vote-detail__votemeta span {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+  .vote-detail__cinfo strong,
+  .vote-detail__cinfo span {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
   }
 }
 
-/* Mobile: the vote-details popup must slide UNDER the sticky
-   joined-contest banner (z 60) while the user scrolls the home feed. */
+/* Mobile: the vote-details popup slides UNDER the sticky joined-contest
+   banner (z 60) while the user scrolls the home feed — same layering as the
+   snoozed pill. */
+/* Desktop/tablet: no bottom close button — the top-right X is the closer.
+   Declared BEFORE the mobile media query so the mobile rule wins. */
+.vote-detail__close-bottom {
+  display: none;
+}
+
 @media (max-width: 767px) {
-  .vote-detail {
-    z-index: 55;
+  body > .vote-detail {
+    z-index: 55 !important;
+    /* When the joined-contest block is stuck (scrolled), the popup card
+       starts BELOW it — same layering as the snoozed pill. 0px when the
+       page is not scrolled. */
+    padding-top: var(--detail-top, 0px);
+  }
+
+  /* Mobile: the close button lives at the BOTTOM of the modal card — the
+     pinned top controls row keeps only the Snooze pill. */
+  .vote-detail__controls .vote-detail__close {
+    display: none;
+  }
+
+  .vote-detail__close-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 16px;
+    padding: 13px;
+    border-radius: 14px;
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    background: rgba(212, 175, 55, 0.1);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .vote-detail__close-bottom:active {
+    transform: scale(0.97);
   }
 }

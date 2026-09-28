@@ -149,6 +149,28 @@
   line-height: 1.5;
 }
 
+/* Which contest this signup registers into (from a referral link) */
+.signup__note--contest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px dashed rgba(212, 175, 55, 0.4);
+  color: var(--gold-light);
+  font-weight: 600;
+}
+.signup__note--contest strong {
+  color: var(--gold);
+}
+.signup__note--contest svg {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
 /* Password field with show/hide (eye) toggle */
 .signup__pw-wrap {
   position: relative;

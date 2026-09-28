@@ -294,6 +294,8 @@ function MainApp() {
   return (
     <>
       <DesktopSidebar
+        contests={contests}
+        allContestants={allContestants}
         onOpenContest={(c) => {
           setOpenContest(c);
           setTab("contests");

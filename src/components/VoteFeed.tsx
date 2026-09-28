@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listRecentVotes, type ApiRecentVote } from "../lib/api";
 import {
@@ -124,9 +125,14 @@ export default function VoteFeed({
     if (start >= votes.length) setStart(0);
   }, [votes.length, start]);
 
-  const visible = votes.slice(start, start + WINDOW);
+  const visibleVotes = votes.slice(start, start + WINDOW);
   const totalSeen = votes.reduce((sum, v) => sum + v.amount, 0);
   const detail = votes.find((v) => v.id === detailId) ?? null;
+
+  // The feed is visible when the home page rules allow it on MOBILE, and
+  // ALWAYS on desktop/tablet — the side panel is part of the desktop layout
+  // and must not disappear just because the user left the home page.
+  const feedVisible = mobileVisible || !isMobile;
 
   // Close the details popup on Escape — keeps the feed non-intrusive.
   useEffect(() => {
@@ -138,21 +144,47 @@ export default function VoteFeed({
     return () => window.removeEventListener("keydown", onKey);
   }, [detail]);
 
-  // Leaving the home page hides the feed (mobile) — the details popup must
-  // close with it, otherwise returning home reopens a stale popup.
+  // Hiding the feed (mobile, away from home) closes the details popup with
+  // it, otherwise returning home reopens a stale popup.
   useEffect(() => {
-    if (!mobileVisible) setDetailId(null);
-  }, [mobileVisible]);
+    if (!feedVisible) setDetailId(null);
+  }, [feedVisible]);
 
-  // Snoozed is the only way to silence the toasts (per product decision —
+  // Snoozed is the only way to silence the feed (per product decision —
   // there is no separate "close notifications" button).
   const counted = useCountUp(totalSeen);
+
+  // Mobile: the snoozed pill must sit JUST BENEATH the sticky joined-contest
+  // block (banner + optional "See all …" button) when the page is scrolled —
+  // and back at the top when the page is not scrolled. The block's height
+  // varies, so measure it live and expose CSS variables:
+  //   --snooze-top  → pill's `top`
+  //   --detail-top  → vote-details popup's top padding (card starts below the
+  //                   stuck banner, same layering as the pill)
+  useEffect(() => {
+    if (!isMobile) return;
+    const update = () => {
+      const el = document.querySelector(".joined-contest-banners");
+      const root = document.documentElement.style;
+      const r = el?.getBoundingClientRect();
+      const stuck = r && r.top <= 0 && r.height > 0;
+      root.setProperty("--snooze-top", stuck ? `${Math.round(r.bottom) + 14}px` : "12px");
+      root.setProperty("--detail-top", stuck ? `${Math.round(r.bottom)}px` : "0px");
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [isMobile]);
 
   // ---- Snoozed: tiny pill with bell icon + animated votes counter ----
   if (snoozed) {
     return (
       <button
-        className={`vote-feed__snooze${mobileVisible ? "" : " vote-feed--mobile-hidden"}`}
+        className={`vote-feed__snooze${feedVisible ? "" : " vote-feed--mobile-hidden"}`}
         onClick={() => setSnoozed(false)}
         title="Show live votes"
       >
@@ -167,7 +199,7 @@ export default function VoteFeed({
 
   return (
     <aside
-      className={`vote-feed${mobileVisible ? "" : " vote-feed--mobile-hidden"}`}
+      className={`vote-feed${feedVisible ? "" : " vote-feed--mobile-hidden"}`}
     >
       <section className="vote-feed__section">
         <div className="vote-feed__controls">
@@ -185,7 +217,7 @@ export default function VoteFeed({
           <span className="vote-feed__pulse" />
         </h2>
         <div className="vote-feed__list">
-          {visible.map((v) => (
+          {visibleVotes.map((v) => (
             <button
               key={v.id}
               className="vote-feed__row"
@@ -215,14 +247,20 @@ export default function VoteFeed({
         </div>
       </section>
 
-      {/* ---- Vote details popup ---- */}
-      {detail && (
-        <div
-          className="vote-detail"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setDetailId(null)}
-        >
+      {/* ---- Vote details popup ----
+          Rendered through a portal to <body>: the feed panel is a fixed
+          narrow side column (transform/filter-free but a 260px box), and a
+          popup nested inside it is squeezed into that width instead of
+          covering the viewport. Portalling escapes the panel so the modal
+          is full-width responsive on desktop too. */}
+      {detail &&
+        createPortal(
+          <div
+            className="vote-detail"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setDetailId(null)}
+          >
           <div
             className="vote-detail__card"
             onClick={(e) => e.stopPropagation()}
@@ -291,8 +329,17 @@ export default function VoteFeed({
             <p className="vote-detail__hint">
               Tap the contestant to open their profile
             </p>
+            {/* Mobile: the close button lives at the END (bottom) of the modal
+                — the top controls row only holds Snooze on small screens. */}
+            <button
+              className="vote-detail__close-bottom"
+              onClick={() => setDetailId(null)}
+            >
+              Close
+            </button>
           </div>
-        </div>
+        </div>,
+      document.body,
       )}
     </aside>
   );

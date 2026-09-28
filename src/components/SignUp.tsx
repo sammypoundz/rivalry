@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef } from "react";
-import { UserPlus, ChevronLeft, Camera, Sparkles, Eye, EyeOff } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { UserPlus, ChevronLeft, Camera, Sparkles, Eye, EyeOff, Swords } from "lucide-react";
 import type { Contestant } from "../data";
 import { register, listContests, submitContestant, uploadImage } from "../lib/api";
 import "./SignUp.css";
@@ -35,6 +35,36 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
     const m = window.location.hash.match(/ref=([0-9a-fA-F]{24})/);
     return m ? m[1] : undefined;
   }, []);
+
+  // A referral link can also name the contest to join (?contest=<id> — the OG
+  // contest landing page appends it). The new contestant must register into
+  // THAT contest, not just whichever live contest happens to be newest.
+  const refContestId = useMemo(() => {
+    const m = window.location.hash.match(/contest=([0-9a-fA-F]{24})/);
+    return m ? m[1] : undefined;
+  }, []);
+
+  // Resolve the target contest up front so the user SEES which contest
+  // they are registering into before submitting.
+  const [targetContest, setTargetContest] = useState<
+    { id: string; title: string } | null
+  >(null);
+  useEffect(() => {
+    let cancelled = false;
+    listContests()
+      .then(({ contests }) => {
+        if (cancelled || !contests.length) return;
+        const picked =
+          (refContestId && contests.find((c) => c.id === refContestId)) ||
+          contests.find((c) => c.status === "voting-live") ||
+          contests[0];
+        setTargetContest({ id: picked.id, title: picked.title });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [refContestId]);
 
   const set =
     (k: keyof typeof form) =>
@@ -109,11 +139,14 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
         referredBy: referrerId,
       });
 
-      // 2. Join them into a live contest — REQUIRED, not best-effort: a
-      // referral signup that ends without a contest entry is a broken funnel.
+      // 2. Join them into a contest — REQUIRED, not best-effort: a referral
+      // signup that ends without a contest entry is a broken funnel. The
+      // contest named in the referral link wins; otherwise the first live one.
       const { contests } = await listContests();
       const contest =
-        contests.find((c) => c.status === "voting-live") ?? contests[0];
+        (refContestId && contests.find((c) => c.id === refContestId)) ||
+        contests.find((c) => c.status === "voting-live") ||
+        contests[0];
       if (!contest) {
         throw new Error(
           "No contest is open right now — your account was created, please try joining again shortly.",
@@ -302,6 +335,13 @@ export default function SignUp({ onBack, onComplete }: SignUpProps) {
           <p className="signup__note">
             🎉 You were invited by a Rivalry contestant — your referral will be
             credited when you join!
+          </p>
+        )}
+
+        {targetContest && (
+          <p className="signup__note signup__note--contest">
+            <Swords size={14} /> You are registering into{" "}
+            <strong>{targetContest.title}</strong>
           </p>
         )}
 

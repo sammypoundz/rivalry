@@ -91,7 +91,14 @@ export default function HeroHeader({
 
   const shareVia = async (channel: string) => {
     const text = encodeURIComponent(`Vote for ${name} on Rivalry! 🏆`);
-    const url = encodeURIComponent(shareLink);
+    // Telegram caches link previews per-URL and never re-crawls a URL it has
+    // already seen (even if the first crawl failed/timed out — common on the
+    // cold-starting backend). A unique cache-buster per share forces a fresh
+    // crawl so the preview always renders.
+    const bust = (u: string) => `${u}${u.includes("?") ? "&" : "?"}tg=${Date.now().toString(36)}`;
+    const url = encodeURIComponent(
+      channel === "Telegram" ? bust(shareLink) : shareLink,
+    );
     const targets: Record<string, string> = {
       WhatsApp: `https://wa.me/?text=${text}%20${url}`,
       X: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,

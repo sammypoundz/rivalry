@@ -31,7 +31,36 @@ function VendorReferrals() {
     staleTime: 10_000,
   });
   const referrals: ApiReferral[] = referralsData?.referrals ?? [];
-  const earned: number = referralsData?.earned ?? 0;
+
+  /** ONE card per referred person (same merge as the Wallet): rows can
+   *  duplicate when a contact was invited twice or an "Invited" row and the
+   *  real signup row both exist. Keep the best status reached and the
+   *  biggest reward so the card reflects where the referral is NOW. */
+  const statusRank: Record<string, number> = {
+    Invited: 0,
+    "Signed up": 1,
+    Qualified: 2,
+  };
+  const byContact = new Map<string, ApiReferral>();
+  for (const r of referrals) {
+    const key = (r.contact || r.name || r.id).trim().toLowerCase();
+    const prev = byContact.get(key);
+    if (!prev) {
+      byContact.set(key, r);
+      continue;
+    }
+    const better = (statusRank[r.status] ?? 0) >= (statusRank[prev.status] ?? 0) ? r : prev;
+    byContact.set(key, {
+      ...better,
+      reward: Math.max(r.reward || 0, prev.reward || 0),
+      name: better.name || prev.name,
+    });
+  }
+  const unique: ApiReferral[] = [...byContact.values()].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  // Earnings counted from the merged list so duplicates never inflate it.
+  const earned: number = unique.reduce((sum, r) => sum + (r.reward || 0), 0);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [copied, setCopied] = useState(false);
@@ -109,7 +138,7 @@ function VendorReferrals() {
       </div>
 
       <ul className="earn__list">
-        {referrals.map((r) => (
+        {unique.map((r) => (
           <li key={r.id}>
             <div>
               <strong>{r.name}</strong>
