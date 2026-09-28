@@ -34,9 +34,44 @@ export default function Wallet() {
   });
 
   const referrals: ApiReferral[] = data?.referrals ?? [];
-  const earned = data?.earned ?? 0;
-  const qualified = referrals.filter((r) => r.status === "Qualified").length;
-  const pending = referrals.filter((r) => r.status !== "Qualified").length;
+  /** Status precedence — the best status a person reached wins the card. */
+  const statusRank: Record<string, number> = {
+    Invited: 0,
+    "Signed up": 1,
+    Qualified: 2,
+  };
+
+  /** ONE card per referred person. Rows can duplicate when the same contact
+   *  was invited twice (or an "Invited" row plus the real signup row both
+   *  exist): merge them by contact, keep the highest status reached and the
+   *  biggest reward, so the status always reflects where the referral is NOW. */
+  const unique: ApiReferral[] = [];
+  const byContact = new Map<string, ApiReferral>();
+  for (const r of referrals) {
+    const key = (r.contact || r.name || r.id).trim().toLowerCase();
+    const prev = byContact.get(key);
+    if (!prev) {
+      byContact.set(key, r);
+      continue;
+    }
+    const better = (statusRank[r.status] ?? 0) >= (statusRank[prev.status] ?? 0) ? r : prev;
+    const merged: ApiReferral = {
+      ...better,
+      reward: Math.max(r.reward || 0, prev.reward || 0),
+      name: better.name || prev.name,
+    };
+    byContact.set(key, merged);
+  }
+  // Newest first, like the ledger
+  unique.push(
+    ...[...byContact.values()].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    ),
+  );
+
+  const earned = unique.reduce((sum, r) => sum + (r.reward || 0), 0);
+  const qualified = unique.filter((r) => r.status === "Qualified").length;
+  const pending = unique.filter((r) => r.status !== "Qualified").length;
 
   if (!user) return null;
 
@@ -85,14 +120,14 @@ export default function Wallet() {
         <h2 className="wallet__heading">
           <Gift size={15} /> Referral earnings
         </h2>
-        {referrals.length === 0 ? (
+        {unique.length === 0 ? (
           <p className="wallet__empty">
             No referrals yet — invite friends from the Earn tab to start
             earning.
           </p>
         ) : (
           <ul className="wallet__list">
-            {referrals.map((r) => (
+            {unique.map((r) => (
               <li key={r.id} className="wallet__row">
                 <div className="wallet__row-main">
                   <span className="wallet__row-name">{r.name}</span>

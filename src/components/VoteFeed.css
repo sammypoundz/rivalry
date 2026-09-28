@@ -271,7 +271,9 @@
     top: 12px;
     left: 12px;
     right: 12px;
-    z-index: 70;
+    /* Mobile: under the sticky joined-contest banner (z 60) so the live
+       toasts slide beneath "You're in: …" when the page is scrolled. */
+    z-index: 50;
     pointer-events: none;
   }
 
@@ -339,22 +341,23 @@
 
   /* Snooze + close sat side by side — with close removed the pill owns
      the controls row (aligned left on mobile is handled by .vote-feed__snooze) */
-/* Mobile: pill docked top-LEFT, clear of the toast that drops from the top */
-@media (max-width: 767px) {
   .vote-feed__snooze {
     left: 12px;
     right: auto;
     pointer-events: auto;
+    /* Mobile: sit UNDER the sticky joined-contest banner (z 60) so the
+       snoozed pill slides beneath "You're in: …" when the user scrolls. */
+    z-index: 50;
   }
 }
 
-  /* The vote-details popup lives inside this pointer-events:none container
-     on mobile — it must re-enable clicks for itself and ALL its children,
-     otherwise the close button taps fall straight through. */
-  .vote-detail,
-  .vote-detail * {
-    pointer-events: auto;
-  }
+/* The vote-details popup lives inside this pointer-events:none container
+   on mobile — it must re-enable clicks for itself and ALL its children,
+   otherwise the close button taps fall straight through. */
+.vote-detail,
+.vote-detail * {
+  pointer-events: auto;
+}
 
   /* Declared last so it wins over .vote-feed { display: flex } above */
   .vote-feed--mobile-hidden {
@@ -614,5 +617,13 @@
     border-radius: 24px;
     border-bottom: 1px solid var(--grey-dark, #4a4a4a);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Mobile: the vote-details popup must slide UNDER the sticky
+   joined-contest banner (z 60) while the user scrolls the home feed. */
+@media (max-width: 767px) {
+  .vote-detail {
+    z-index: 55;
   }
 }
