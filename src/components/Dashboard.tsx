@@ -93,7 +93,12 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
       <section className="dashboard__section">
         <h2 className="dashboard__section-title">Contests</h2>
         <div className="dashboard__contest-list">
-          {contests.map((contest) => {
+          {/* Home shows only contests that are live RIGHT NOW — upcoming and
+              ended ones are filtered out so the feed never teases contests
+              that can't be voted on yet. */}
+          {contests
+            .filter((c) => c.status === "voting-live")
+            .map((contest) => {
             const roster = rosterOf(contest, allContestants);
             return (
               <div key={contest.id} className="home-contest">
@@ -106,11 +111,7 @@ export default function Dashboard({ onSelect, joinedContests, onOpenContest, con
                   <img src={contest.coverImage} alt={contest.title} loading="lazy" />
                   <div className="home-contest__cover-overlay">
                     <span className={`contest-card__badge contest-card__badge--${contest.status}`}>
-                      {contest.status === "voting-live"
-                        ? "Voting Live"
-                        : contest.status === "upcoming"
-                          ? "Upcoming"
-                          : "Ended"}
+                      Voting Live
                     </span>
                     <h3 className="home-contest__title">{contest.title}</h3>
                     <p className="home-contest__tagline">{contest.tagline}</p>

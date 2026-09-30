@@ -349,7 +349,16 @@ function MainApp() {
           onOpen={(c) => setOpenContest(c)}
           onBack={() => setOpenContest(null)}
           joinedContestIds={joinedContestIds}
-          onJoined={() => live.refresh()}
+          onJoined={(contestId) => {
+            // Optimistically mark the contest as joined so the contest page
+            // flips to "You're competing" INSTANTLY, then refetch in the
+            // background to reconcile with the server (roster, counts…).
+            if (contestId)
+              setJoinedContestIds((ids) =>
+                ids.includes(contestId) ? ids : [...ids, contestId],
+              );
+            live.refresh();
+          }}
           allContestants={allContestants}
           contests={contests}
           onSelect={(id) => {

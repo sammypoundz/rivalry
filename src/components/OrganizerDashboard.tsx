@@ -392,6 +392,45 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
                   </div>
                 )}
                 <div className="orgdash__card-actions">
+                  {/* Manual status override — organiser can pin the contest
+                      live/upcoming/ended regardless of the timeline. */}
+                  {STATUS_OPTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={async () => {
+                        if (s === c.status) return;
+                        setBusy(true);
+                        setError("");
+                        try {
+                          await updateContest(c.id, { status: s });
+                          await refetch();
+                          await queryClient.invalidateQueries({
+                            queryKey: qk.contests,
+                          });
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Could not update status",
+                          );
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                      disabled={busy || s === c.status}
+                      className={
+                        s === c.status
+                          ? "orgdash__status-btn orgdash__status-btn--active"
+                          : "orgdash__status-btn"
+                      }
+                    >
+                      {s === "voting-live"
+                        ? "Go Live"
+                        : s === "upcoming"
+                          ? "Upcoming"
+                          : "End"}
+                    </button>
+                  ))}
                   <button onClick={() => openEdit(c)} disabled={busy}>
                     <Pencil size={14} /> Edit
                   </button>

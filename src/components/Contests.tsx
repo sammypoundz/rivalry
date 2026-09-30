@@ -21,6 +21,7 @@ import {
   Share2,
   Gift,
   LayoutDashboard,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { getMyContestants, submitContestant, uploadImage } from "../lib/api";
@@ -33,8 +34,9 @@ interface ContestsProps {
   onSelect: (id: number) => void;
   /** Backend ids of contests the logged-in user has entered. */
   joinedContestIds: string[];
-  /** Called after a successful join so the app can refresh everywhere. */
-  onJoined: () => void;
+  /** Called after a successful join so the app can refresh everywhere.
+   *  Receives the joined contest's backend id for optimistic UI. */
+  onJoined: (contestId?: string) => void;
   allContestants: Contestant[];
   /** Live contests from the backend (falls back to seed data). */
   contests: Contest[];
@@ -69,10 +71,17 @@ export default function Contests({
   onOpenDashboard,
 }: ContestsProps) {
   const list = contests;
-  if (contest)
+  if (contest) {
+    // Resolve the LIVE version of this contest from the current list so the
+    // detail page reflects status/roster/vote changes as they poll in — not
+    // the snapshot captured when the user tapped it.
+    const live =
+      contests.find(
+        (c) => contest.apiId && c.apiId === contest.apiId,
+      ) ?? contest;
     return (
       <ContestDetail
-        contest={contest}
+        contest={live}
         onBack={onBack}
         onSelect={onSelect}
         joined={joinedContestIds.includes(contest.apiId ?? "__none__")}
@@ -82,6 +91,7 @@ export default function Contests({
         onOpenDashboard={onOpenDashboard}
       />
     );
+  }
 
   return (
     <main className="contests-page">
@@ -155,7 +165,7 @@ type ContestDetailProps = {
   onBack: () => void;
   onSelect: (id: number) => void;
   joined: boolean;
-  onJoined: () => void;
+  onJoined: (contestId?: string) => void;
   allContestants: Contestant[];
   onNavigate: (
     screen: "all-contestants",
@@ -279,7 +289,7 @@ function ContestDetail({
           contest={contest}
           onClose={() => setShowJoin(false)}
           onDone={() => {
-            onJoined();
+            onJoined(contest.apiId);
             setShowJoin(false);
           }}
         />
@@ -586,6 +596,8 @@ function JoinFlow({
   const [existing, setExisting] = useState<string[]>([]); // gallery in the app
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  /** True while the entry-fee payment (paid contests only) is processing. */
+  const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -646,8 +658,20 @@ function JoinFlow({
   const submitJoin = async () => {
     if (submitting || !valid || !contest.apiId) return;
     setSubmitting(true);
-    setError("");
+    setError(""
+    );
     try {
+      // Paid contest: take the entry fee BEFORE creating the contestant entry.
+      // Same simulated gateway as the vote flow — swap for Paystack/Flutterwave.
+      if (contest.entryFee) {
+        setPaying(true);
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 1400));
+        } catch {
+          /* unreachable */
+        }
+        setPaying(false);
+      }
       await submitContestant(contest.apiId, {
         // `number` is globally unique in the DB — use a wide-range pick (with a
         // backend retry on collision) so joining multiple contests never fails.
@@ -856,14 +880,31 @@ function JoinFlow({
               <CheckCircle2 size={14} /> Rewards are paid out in naira at contest end
             </div>
             {error && <p className="join-flow__error">{error}</p>}
+            {contest.entryFee && (
+              <div className="join-flow__fee">
+                <ShieldCheck size={14} /> Entry fee <strong>₦{contest.entryFee.toLocaleString()}</strong>
+                 · will be charged when you confirm
+              </div>
+            )}
             <button className="join-flow__next" disabled={submitting} onClick={submitJoin}>
               {submitting ? (
                 <>
-                  <Loader2 size={15} className="join-flow__spin" /> Joining…
+                  {paying ? (
+                    <>
+                      <Loader2 size={15} className="join-flow__spin" /> Processing payment…
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 size={15} className="join-flow__spin" /> Joining…
+                    </>
+                  )}
                 </>
               ) : (
                 <>
-                  <Sparkles size={15} /> Confirm &amp; Join Contest
+                  <Sparkles size={15} />{" "}
+                  {contest.entryFee
+                    ? `Pay ₦${contest.entryFee.toLocaleString()} & Join`
+                    : "Confirm & Join Contest"}
                 </>
               )}
             </button>

@@ -278,6 +278,15 @@
   opacity: 0.5;
 }
 
+/* Manual status override buttons on each contest card */
+.orgdash__status-btn {
+  padding: 6px 10px;
+}
+.orgdash__status-btn--active {
+  background: rgba(212, 175, 55, 0.18);
+  color: var(--gold, #d4af37);
+}
+
 .orgdash__delete {
   color: #ff7a7a !important;
 }

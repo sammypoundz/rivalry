@@ -656,6 +656,21 @@
   flex-shrink: 0;
 }
 
+/* Paid-contest entry-fee note above the confirm button */
+.join-flow__fee {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--gold);
+  font-size: 0.78rem;
+}
+.join-flow__fee strong {
+  color: #fff;
+}
+
 /* ---- JoinFlow image picking ---- */
 .join-flow__label {
   margin: 4px 0 8px;
