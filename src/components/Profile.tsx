@@ -40,6 +40,17 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
   });
   const likedByMe = Boolean(detail?.likedByMe);
   const likes = detail?.contestant.likes ?? contestant.likes ?? 0;
+  // Voting lock: the contestant's contest must have started (status
+  // "voting-live") before the vote button does anything. While it's upcoming,
+  // the CTA is disabled with an explainer instead of failing at payment time.
+  const votingLocked = useMemo(() => {
+    const st = detail?.contestant?.contest?.status;
+    if (st === "voting-live") return false;
+    if (st === "upcoming" || st === "ended") return true;
+    // No contest info (seed/demo data): fall back to the contest start time.
+    return false;
+  }, [detail]);
+  const votePrice = detail?.contestant?.contest?.votePrice;
   // Votes: live detail value if available, otherwise the list value; a fresh
   // vote also overrides optimistically via onVoted → setLocalVotes.
   const [localVotes, setLocalVotes] = useState<number | null>(null);
@@ -67,7 +78,10 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
     };
   }, [contestant, detail, votes, likes]);
 
-  const handleVote = () => setShowVoteModal(true);
+  const handleVote = () => {
+    if (votingLocked) return;
+    setShowVoteModal(true);
+  };
 
   // Section components currently read the default contestant from data.ts;
   // this wrapper renders them for the profile screen.
@@ -88,19 +102,29 @@ export default function Profile({ contestant, onBack }: ProfileProps) {
         rank={profile.rank}
         prize={profile.prize}
       />
-      <VoteNowButton onClick={handleVote} />
+      <VoteNowButton
+        onClick={handleVote}
+        disabled={votingLocked}
+        label={votingLocked ? "Contest has not started" : undefined}
+      />
       <AboutSection contestant={profile} />
       <PhotoGallery contestant={profile} />
       <SupportProgress votes={votes} goal={profile.voteGoal} />
       <Supporters contestantId={profile.apiId ?? String(profile.id)} />
       <ShareProfile contestantId={profile.id} apiId={profile.apiId} contestantName={profile.name} />
       <div className="app__footer-spacer" />
-      <StickyVoteBar votes={votes} onVote={handleVote} />
+      <StickyVoteBar
+        votes={votes}
+        onVote={handleVote}
+        disabled={votingLocked}
+        label={votingLocked ? "Contest has not started" : undefined}
+      />
       {showVoteModal && (
         <VoteModal
           contestantId={profile.apiId ?? ""}
           contestantName={profile.name}
           contestantImage={profile.heroImage}
+          votePrice={votePrice}
           onClose={() => setShowVoteModal(false)}
           onVoted={(newTotal) => setLocalVotes(newTotal)}
         />

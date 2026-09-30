@@ -90,6 +90,20 @@
   border: 1px solid var(--grey-dark);
 }
 
+/* Free / paid entry pill — bottom-left of the cover */
+.contest-card__badge--entry {
+  top: auto;
+  bottom: 12px;
+}
+.contest-card__badge--free {
+  background: rgba(46, 184, 114, 0.92);
+  color: #fff;
+}
+.contest-card__badge--paid {
+  background: rgba(212, 175, 55, 0.95);
+  color: #1a1405;
+}
+
 .contest-card__body {
   padding: 14px 16px 16px;
 }
@@ -147,11 +161,18 @@
   margin: 0 auto;
 }
 
+.contest-detail__topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 16px 0;
+}
+
 .contest-detail__back {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin: 16px 0 0 16px;
+  margin: 0;
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--grey-dark);
@@ -164,6 +185,25 @@
 .contest-detail__back:hover {
   color: var(--gold);
   border-color: var(--gold);
+}
+
+/* Organiser dashboard entry point — icon pinned top-left of the contest page */
+.contest-detail__dashbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--grey-dark);
+  background: rgba(20, 20, 20, 0.8);
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.contest-detail__dashbtn:hover {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.12);
 }
 
 .contest-detail__hero {

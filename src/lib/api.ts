@@ -75,6 +75,8 @@ export interface ApiContest {
   coverImage: string;
   status: "voting-live" | "upcoming" | "ended" | string;
   endsAt: string;
+  votePrice?: number;
+  entryFee?: number;
   totalVotes: number;
   rewards: { position: string; amount: number; perk: string }[];
   contestants?: ApiContestant[];
@@ -171,6 +173,82 @@ export async function getContest(id: string) {
   return request<{ success: true; contest: ApiContest }>(`/contests/${id}`);
 }
 
+// ---------- Organiser dashboard ----------
+
+/** Self-upgrade the signed-in account to an organiser. */
+export async function becomeOrganiser() {
+  return request<{ success: true; role: string }>(
+    "/users/me/become-organiser",
+    { method: "POST" },
+  );
+}
+
+/** Compact contest shape used by the organiser dashboard list. */
+export interface OrganiserContest {
+  id: string;
+  title: string;
+  tagline: string;
+  category: string;
+  coverImage: string;
+  status: string;
+  startsAt?: string | null;
+  endsAt: string;
+  votePrice?: number;
+  entryFee?: number;
+  totalVotes: number;
+  rewards: { position: string; amount: number; perk: string }[];
+  contestantCount: number;
+  contestants: {
+    id: string;
+    name: string;
+    number: number;
+    heroImage: string;
+    votes: number;
+  }[];
+}
+
+/** Contests the logged-in organiser (or admin) created. */
+export async function listMyOrganisedContests() {
+  return request<{ success: true; contests: OrganiserContest[] }>(
+    "/users/me/organised-contests",
+  );
+}
+
+export interface ContestInput {
+  title: string;
+  tagline?: string;
+  category?: string;
+  coverImage?: string;
+  status?: "upcoming" | "voting-live" | "ended" | string;
+  startsAt?: string;
+  endsAt: string;
+  /** Price per vote in Naira (defaults to ₦100 when omitted). */
+  votePrice?: number;
+  /** Entry fee in Naira (0/omitted = free to enter). */
+  entryFee?: number;
+  rewards?: { position: string; amount: number; perk: string }[];
+}
+
+export async function createContest(input: ContestInput) {
+  return request<{ success: true; contest: OrganiserContest }>("/contests", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateContest(id: string, input: Partial<ContestInput>) {
+  return request<{ success: true; contest: OrganiserContest }>(
+    `/contests/${id}`,
+    { method: "PUT", body: JSON.stringify(input) },
+  );
+}
+
+export async function deleteContest(id: string) {
+  return request<{ success: true; message: string }>(`/contests/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // ---------- Contestants ----------
 export async function listContestants(contestId: string) {
   return request<{ success: true; contestants: ApiContestant[] }>(
@@ -181,7 +259,16 @@ export async function listContestants(contestId: string) {
 export async function getContestant(id: string) {
   return request<{
     success: true;
-    contestant: ApiContestant & { likes?: number };
+    contestant: ApiContestant & {
+      likes?: number;
+      /** Included by the backend (contest: true) — carries status + votePrice. */
+      contest?: {
+        votePrice?: number;
+        status?: string;
+        startsAt?: string | null;
+        title?: string;
+      };
+    };
     likedByMe?: boolean;
   }>(`/contestants/${id}`);
 }

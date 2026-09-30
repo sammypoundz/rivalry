@@ -11,7 +11,7 @@ import { castVote } from "../lib/api";
 import { formatNaira } from "../data";
 import "./VoteModal.css";
 
-/** Price per vote in Naira. */
+/** Fallback price per vote in Naira when a contest doesn't set its own. */
 export const VOTE_PRICE = 100;
 
 /**
@@ -32,6 +32,8 @@ interface VoteModalProps {
   contestantId: string; // API (ObjectId) id used for voting
   contestantName: string;
   contestantImage: string;
+  /** Price per vote for this contest (set by its organiser). */
+  votePrice?: number;
   onClose: () => void;
   onVoted: (newTotal: number, votesAdded: number) => void;
 }
@@ -42,6 +44,7 @@ export default function VoteModal({
   contestantId,
   contestantName,
   contestantImage,
+  votePrice,
   onClose,
   onVoted,
 }: VoteModalProps) {
@@ -68,7 +71,9 @@ export default function VoteModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [stage, onClose]);
 
-  const total = useMemo(() => votes * VOTE_PRICE, [votes]);
+  const price = votePrice && votePrice > 0 ? votePrice : VOTE_PRICE;
+
+  const total = useMemo(() => votes * price, [votes, price]);
 
   const isValidId = /^[0-9a-fA-F]{24}$/.test(contestantId);
 
@@ -209,7 +214,7 @@ export default function VoteModal({
             <div className="vote-modal__summary">
               <div className="vote-modal__line">
                 <span>
-                  {votes} vote{votes > 1 ? "s" : ""} × {formatNaira(VOTE_PRICE)}
+                  {votes} vote{votes > 1 ? "s" : ""} × {formatNaira(price)}
                 </span>
                 <strong>{formatNaira(total)}</strong>
               </div>

@@ -20,6 +20,7 @@ import {
   Check,
   Share2,
   Gift,
+  LayoutDashboard,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { getMyContestants, submitContestant, uploadImage } from "../lib/api";
@@ -39,6 +40,8 @@ interface ContestsProps {
   contests: Contest[];
   /** Navigate to app screens (e.g. all-contestants). */
   onNavigate: (screen: string, opts?: { contestId?: string | number }) => void;
+  /** Opens the organiser dashboard (top-left icon button on the contest page). */
+  onOpenDashboard?: () => void;
 }
 
 const fmtLeft = (endsAt: number) => {
@@ -63,6 +66,7 @@ export default function Contests({
   allContestants,
   contests,
   onNavigate,
+  onOpenDashboard,
 }: ContestsProps) {
   const list = contests;
   if (contest)
@@ -75,15 +79,20 @@ export default function Contests({
         onJoined={onJoined}
         allContestants={allContestants}
         onNavigate={onNavigate}
+        onOpenDashboard={onOpenDashboard}
       />
     );
 
   return (
     <main className="contests-page">
-      <h1 className="contests-page__title">Contests</h1>
-      <p className="contests-page__sub">
-        Pick a contest, rally support, and win big.
-      </p>
+      <div className="contests-page__head">
+        <div>
+          <h1 className="contests-page__title">Contests</h1>
+          <p className="contests-page__sub">
+            Pick a contest, rally support, and win big.
+          </p>
+        </div>
+      </div>
       <div className="contests-page__grid">
         {list.map((c) => (
           <button key={c.id} className="contest-card" onClick={() => onOpen(c)}>
@@ -103,6 +112,15 @@ export default function Contests({
                 ) : (
                   "Ended"
                 )}
+              </span>
+              <span
+                className={`contest-card__badge contest-card__badge--entry ${
+                  c.entryFee ? "contest-card__badge--paid" : "contest-card__badge--free"
+                }`}
+              >
+                {c.entryFee
+                  ? `₦${c.entryFee.toLocaleString()} entry`
+                  : "Free entry"}
               </span>
             </div>
             <div className="contest-card__body">
@@ -143,6 +161,8 @@ type ContestDetailProps = {
     screen: "all-contestants",
     opts: { contestId: number },
   ) => void;
+  /** Opens the organiser dashboard (top-left icon button). */
+  onOpenDashboard?: () => void;
 };
 
 function ContestDetail({
@@ -153,6 +173,7 @@ function ContestDetail({
   onJoined,
   allContestants,
   onNavigate,
+  onOpenDashboard,
 }: ContestDetailProps) {
   const [showJoin, setShowJoin] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -186,9 +207,21 @@ function ContestDetail({
 
   return (
     <main className="contest-detail">
-      <button className="contest-detail__back" onClick={onBack}>
-        <ChevronLeft size={18} /> All Contests
-      </button>
+      <div className="contest-detail__topbar">
+        <button className="contest-detail__back" onClick={onBack}>
+          <ChevronLeft size={18} /> All Contests
+        </button>
+        {onOpenDashboard && (
+          <button
+            className="contest-detail__dashbtn"
+            onClick={onOpenDashboard}
+            aria-label="Organiser dashboard"
+            title="Organiser dashboard"
+          >
+            <LayoutDashboard size={17} />
+          </button>
+        )}
+      </div>
 
       <div className="contest-detail__hero">
         <img src={contest.coverImage} alt={contest.title} />
@@ -655,7 +688,11 @@ function JoinFlow({
         </button>
 
         <h2 className="join-flow__title">Join {contest.title}</h2>
-        <p className="join-flow__sub">Top prize {formatNaira(contest.rewards[0].amount)}</p>
+        <p className="join-flow__sub">
+          {contest.entryFee
+            ? `Entry fee ₦${contest.entryFee.toLocaleString()} · Top prize ${formatNaira(contest.rewards[0].amount)}`
+            : `Free to enter · Top prize ${formatNaira(contest.rewards[0].amount)}`}
+        </p>
 
         {/* Step 1 — contestant details */}
         {step === 1 && (

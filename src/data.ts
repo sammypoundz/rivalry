@@ -127,6 +127,10 @@ export interface Contest {
   coverImage: string;
   endsAt: number; // epoch ms
   status: "voting-live" | "upcoming" | "ended";
+  /** Price per vote in Naira set by the organiser (default ₦100). */
+  votePrice: number;
+  /** Entry fee in Naira (0 = free to enter). */
+  entryFee?: number;
   contestantIds: number[];
   /** Backend ids of the contestants in this contest (for live rosters). */
   contestantApiIds?: string[];
@@ -149,6 +153,7 @@ export const contests: Contest[] = [
     endsAt:
       Date.now() + 2 * 24 * 3600 * 1000 + 7 * 3600 * 1000 + 42 * 60 * 1000,
     status: "voting-live",
+    votePrice: 100,
     contestantIds: [1, 2, 3, 4],
     totalVotes: 67547,
     rewards: [
@@ -166,6 +171,7 @@ export const contests: Contest[] = [
       "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop",
     endsAt: Date.now() + 9 * 24 * 3600 * 1000,
     status: "voting-live",
+    votePrice: 100,
     contestantIds: [2, 3, 4],
     totalVotes: 47060,
     rewards: [
@@ -183,6 +189,7 @@ export const contests: Contest[] = [
       "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1200&auto=format&fit=crop",
     endsAt: Date.now() + 16 * 24 * 3600 * 1000,
     status: "upcoming",
+    votePrice: 100,
     contestantIds: [1, 4],
     totalVotes: 0,
     rewards: [
@@ -232,6 +239,8 @@ export function mapApiContest(c: ApiContest, index: number): Contest {
     coverImage: c.coverImage || contestCoverFallback,
     endsAt: new Date(c.endsAt).getTime(),
     status: (c.status as Contest["status"]) || "upcoming",
+    votePrice: c.votePrice ?? 100,
+    entryFee: c.entryFee ?? 0,
     contestantIds: (c.contestants ?? []).map((x, i) => Number(x.id) || i + 1),
     contestantApiIds: (c.contestants ?? []).map((x) => x.id),
     totalVotes: c.totalVotes,

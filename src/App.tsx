@@ -17,6 +17,7 @@ import { getMyContestants } from "./lib/api";
 import { rosterOf } from "./lib/queries";
 import UserProfile from "./components/UserProfile";
 import Wallet from "./components/Wallet";
+import OrganizerDashboard from "./components/OrganizerDashboard";
 import "./App.css";
 
 function AppShell() {
@@ -128,6 +129,8 @@ function MainApp() {
   );
 
   useEffect(() => {
+    console.log("EFFECT:hash-profile deps=allContestants len=" + allContestants.length, "isSameAsPrev=" + (allContestantsRef.current === allContestants));
+    allContestantsRef.current = allContestants;
     const onHash = () => openProfileFromHash(allContestants);
     onHash();
     window.addEventListener("hashchange", onHash);
@@ -138,6 +141,7 @@ function MainApp() {
   // live contestant so a profile opened during the loading window (seed data,
   // no apiId) doesn't stay stale and break voting afterwards.
   useEffect(() => {
+    console.log("EFFECT:sync-selected");
     setSelected((s) => {
       if (!s) return s;
       const match = allContestants.find(
@@ -199,6 +203,7 @@ function MainApp() {
   // and restores the exact place they were (tab, open contest, contestant
   // profile, view-all page) instead of dumping them somewhere random.
   const listsRef = useRef({ contests, allContestants });
+  const allContestantsRef = useRef(contestants);
   listsRef.current = { contests, allContestants };
 
   const navSnapshot = useCallback(() => ({
@@ -351,6 +356,9 @@ function MainApp() {
             const c = allContestants.find((x) => x.id === id);
             if (c) openProfile(c);
           }}
+          onOpenDashboard={() =>
+            user ? setTab("organizer") : setPendingAuthAction("profile")
+          }
           onNavigate={(screen, opts) => {
             if (screen !== "all-contestants" || !opts) return;
             const contestId = String(opts.contestId ?? "");
@@ -408,6 +416,9 @@ function MainApp() {
       )}
       {tab === "earn" && <Earn />}
       {tab === "wallet" && user && <Wallet />}
+      {tab === "organizer" && user && (
+        <OrganizerDashboard onBack={() => setTab("contests")} />
+      )}
       {tab === "profile" && viewingProfile && selected && (
         <Profile
           key={selected.id}
