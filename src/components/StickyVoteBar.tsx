@@ -4,9 +4,13 @@ import "./StickyVoteBar.css";
 interface StickyVoteBarProps {
   votes: number;
   onVote?: () => void;
+  /** Disable the CTA (e.g. while the contest hasn't started). */
+  disabled?: boolean;
+  /** Optional helper text shown on the CTA instead of "Vote Now". */
+  label?: string;
 }
 
-export default function StickyVoteBar({ votes, onVote }: StickyVoteBarProps) {
+export default function StickyVoteBar({ votes, onVote, disabled, label }: StickyVoteBarProps) {
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -18,12 +22,14 @@ export default function StickyVoteBar({ votes, onVote }: StickyVoteBarProps) {
       <button
         className="sticky-bar__cta"
         onClick={() => {
+          if (disabled) return;
           setPressed(true);
           setTimeout(() => setPressed(false), 200);
           onVote?.();
         }}
+        disabled={disabled}
       >
-        Vote Now
+        {label ?? "Vote Now"}
       </button>
     </div>
   );

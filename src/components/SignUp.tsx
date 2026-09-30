@@ -2,7 +2,6 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { UserPlus, ChevronLeft, Camera, Sparkles, Eye, EyeOff, Swords } from "lucide-react";
 import { register, listContests, submitContestant, uploadImage } from "../lib/api";
 import type { Contestant } from "../data";
-import { useAuth } from "../auth/AuthProvider";
 import "./SignUp.css";
 
 interface SignUpProps {
