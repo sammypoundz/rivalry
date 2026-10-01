@@ -21,6 +21,10 @@ import UserProfile from "./components/UserProfile";
 // Suspense fallback so the layout shape is already on screen.
 const Wallet = lazy(() => import("./components/Wallet"));
 const OrganizerDashboard = lazy(() => import("./components/OrganizerDashboard"));
+// The admin dashboard is a separate code-split chunk served on its own
+// route (#/admin) so regular users never download admin code.
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+import AdminSkeleton from "./pages/admin/AdminSkeleton";
 import OrganizerDashboardSkeleton from "./components/OrganizerDashboardSkeleton";
 import WalletSkeleton from "./components/WalletSkeleton";
 import "./App.css";
@@ -52,6 +56,7 @@ function MainApp() {
     "profile",
     "wallet",
     "organizer",
+    "admin",
   ];
   // The active tab survives a page refresh: it is persisted to
   // sessionStorage and restored on mount, so reloading while on the Profile
@@ -99,6 +104,19 @@ function MainApp() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+  // Admin deep link: .../#/admin opens the admin dashboard route directly
+  // (access is enforced inside the screen itself — non-admins see a gate).
+  const [deepLinkAdmin, setDeepLinkAdmin] = useState(
+    () => window.location.hash.startsWith("#/admin"),
+  );
+  useEffect(() => {
+    const onHash = () =>
+      setDeepLinkAdmin(window.location.hash.startsWith("#/admin"));
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  const showAdmin = deepLinkAdmin || tab === "admin";
+
   // Load the contests the user has actually entered (synced everywhere) and
   // refresh whenever auth or the live data changes.
   useEffect(() => {
@@ -339,6 +357,18 @@ function MainApp() {
         <span className="app-boot__logo">R</span>
         <span className="app-boot__label">Loading Rivalry…</span>
       </div>
+    );
+  }
+
+  // The admin route (#/admin) is a STANDALONE full screen — the homepage,
+  // sidebar, vote feed and bottom nav must not render underneath it (they
+  // used to stack on top, pushing the dashboard below a full page of feed).
+  // Access itself is enforced inside AdminDashboard (non-admins see a gate).
+  if (showAdmin) {
+    return (
+      <Suspense fallback={<AdminSkeleton />}>
+        <AdminDashboard />
+      </Suspense>
     );
   }
 

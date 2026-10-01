@@ -10,7 +10,8 @@ export type Tab =
   | "signup"
   | "profile"
   | "wallet"
-  | "organizer";
+  | "organizer"
+  | "admin";
 
 interface BottomNavProps {
   active: Tab;

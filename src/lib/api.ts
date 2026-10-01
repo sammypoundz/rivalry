@@ -544,6 +544,131 @@ export async function uploadImages(images: string[]) {
   });
 }
 
+// ---------- Admin dashboard ----------
+
+export interface AdminStats {
+  users: number;
+  organisers: number;
+  admins: number;
+  contests: number;
+  liveContests: number;
+  contestants: number;
+  votesTotal: number;
+  votesThisMonth: number;
+  votersThisMonth: number;
+  votingVolume: number;
+  entriesThisMonth: number;
+  entryVolume: number;
+  pendingApplications: number;
+}
+
+export async function adminStats() {
+  return request<{ success: true; stats: AdminStats }>("/admin/stats");
+}
+
+export interface AdminUser {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  role: string;
+  createdAt: string;
+  avatarUrl: string | null;
+}
+
+export async function adminUsers(params: { query?: string; role?: string; limit?: number; offset?: number } = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v) as [string, string][],
+  ).toString();
+  return request<{ success: true; users: AdminUser[]; total: number; hasMore?: boolean }>(
+    `/admin/users${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export async function adminSetRole(id: string, role: string) {
+  return request<{ success: true; user: AdminUser }>(`/admin/users/${id}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function adminApplications(status?: string) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<{ success: true; applications: OrganiserApplication[] }>(
+    `/admin/applications${q}`,
+  );
+}
+
+export async function adminReviewApplication(id: string, action: "approve" | "reject") {
+  return request<{ success: true; application: OrganiserApplication }>(
+    `/admin/applications/${id}/${action}`,
+    { method: "POST" },
+  );
+}
+
+export interface AdminContest {
+  id: string;
+  title: string;
+  tagline: string;
+  category: string;
+  coverImage: string;
+  status: string;
+  startsAt?: string | null;
+  endsAt: string;
+  votePrice?: number;
+  entryFee?: number;
+  totalVotes: number;
+  contestantCount: number;
+  organiser: { id: string; fullName: string; email: string } | null;
+}
+
+export interface AdminContestDetail extends AdminContest {
+  rewards: { position: string; amount: number; perk: string }[];
+  contestants: {
+    id: string;
+    name: string;
+    number: number;
+    state: string;
+    heroImage: string;
+    votes: number;
+    likes: number;
+  }[];
+  voteRevenue: number;
+  entryRevenue: number;
+}
+
+export async function adminContests(params: { status?: string; limit?: number; offset?: number } = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v) as [string, string][],
+  ).toString();
+  return request<{ success: true; contests: AdminContest[]; total: number; hasMore?: boolean }>(
+    `/admin/contests${qs ? `?${qs}` : ""}`,
+  );
+}
+
+/** Full detail of one contest — roster, rewards, revenue breakdown. */
+export async function adminContest(id: string) {
+  return request<{ success: true; contest: AdminContestDetail }>(
+    `/admin/contests/${id}`,
+  );
+}
+
+export async function adminUpdateContest(
+  id: string,
+  input: { title?: string; status?: string; votePrice?: number; entryFee?: number },
+) {
+  return request<{ success: true; contest: unknown }>(`/admin/contests/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function adminDeleteContest(id: string) {
+  return request<{ success: true; message: string }>(`/admin/contests/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // ---------- Referrals ----------
 
 export interface ApiReferral {
