@@ -16,6 +16,23 @@
   font-size: 0.9rem;
 }
 
+/* Header row: title left, organiser dashboard entry pinned top-right */
+.contests-page__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.contests-page__head .contests-page__sub {
+  margin-bottom: 20px;
+}
+
+.contests-page__dashbtn {
+  margin-top: 4px; /* aligns with the title line */
+  flex-shrink: 0;
+}
+
 .contests-page__grid {
   display: flex;
   flex-direction: column;
@@ -168,6 +185,12 @@
   margin: 16px 16px 0;
 }
 
+/* Push the organiser dashboard entry to the far right end of the topbar
+   (mobile: inline at the right; desktop: same, centered column). */
+.contest-detail__topbar > .contest-detail__dashbtn {
+  margin-left: auto;
+}
+
 .contest-detail__back {
   display: inline-flex;
   align-items: center;
@@ -204,6 +227,14 @@
 .contest-detail__dashbtn:hover {
   border-color: var(--gold);
   background: rgba(212, 175, 55, 0.12);
+}
+
+/* Desktop: slightly larger, comfortable target in the centered column */
+@media (min-width: 768px) {
+  .contest-detail__dashbtn {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 .contest-detail__hero {

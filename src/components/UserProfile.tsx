@@ -34,7 +34,7 @@ export default function UserProfile({ onOpenContest }: UserProfileProps) {
   const [editingInfo, setEditingInfo] = useState(false);
   // Cached + auto-refreshed by React Query: any vote/like/photo change
   // (anywhere in the app) invalidates this and the stats update instantly.
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: qk.myStats,
     queryFn: getMyStats,
     enabled: !!user,
@@ -45,6 +45,43 @@ export default function UserProfile({ onOpenContest }: UserProfileProps) {
   const stats: ApiMyStats | null = data?.stats ?? null;
 
   if (!user) return null;
+
+  // First load with no cached stats: skeleton mirrors the real layout
+  // (header, info card, stat tiles) so nothing jumps when data lands.
+  if (isLoading && !data) {
+    return (
+      <div className="userprofile app" aria-busy="true" aria-label="Loading profile">
+        <header className="userprofile__header">
+          <span className="userprofile__avatar userprofile__skl userprofile__skl--avatar" />
+          <div className="userprofile__meta">
+            <span className="userprofile__skl userprofile__skl--name" />
+            <span className="userprofile__skl userprofile__skl--contact" />
+          </div>
+          <span className="userprofile__skl userprofile__skl--logout" />
+        </header>
+        <section className="userprofile__info">
+          <div className="userprofile__info-head">
+            <span className="userprofile__skl userprofile__skl--heading" />
+            <span className="userprofile__skl userprofile__skl--editbtn" />
+          </div>
+          <div className="userprofile__info-grid">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="userprofile__info-row">
+                <span className="userprofile__skl userprofile__skl--infolabel" />
+                <span className="userprofile__skl userprofile__skl--infovalue" />
+              </div>
+            ))}
+          </div>
+        </section>
+        <div className="userprofile__stats">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="userprofile__stat userprofile__skl userprofile__skl--stat" />
+          ))}
+        </div>
+        <div className="app__footer-spacer" />
+      </div>
+    );
+  }
 
   // Accounts registered with only a phone (or only an email) carry synthetic
   // placeholder values like "080...@phone.rivalry" — never show those.

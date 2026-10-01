@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { useLiveData, contestants as seedContestants, contests as seedContests, type Contestant, type Contest } from "./data";
 import Dashboard from "./components/Dashboard";
 import MyContests from "./components/MyContests";
@@ -16,8 +16,13 @@ import AuthOverlay from "./auth/AuthOverlay";
 import { getMyContestants } from "./lib/api";
 import { rosterOf } from "./lib/queries";
 import UserProfile from "./components/UserProfile";
-import Wallet from "./components/Wallet";
-import OrganizerDashboard from "./components/OrganizerDashboard";
+// Heavy, role-specific screens are code-split: their chunks only download
+// when the user actually opens the tab. The card skeleton doubles as the
+// Suspense fallback so the layout shape is already on screen.
+const Wallet = lazy(() => import("./components/Wallet"));
+const OrganizerDashboard = lazy(() => import("./components/OrganizerDashboard"));
+import OrganizerDashboardSkeleton from "./components/OrganizerDashboardSkeleton";
+import WalletSkeleton from "./components/WalletSkeleton";
 import "./App.css";
 
 function AppShell() {
@@ -37,7 +42,24 @@ export default function App() {
 }
 
 function MainApp() {
-  const [tab, setTab] = useState<Tab>("dashboard");
+  /** Every valid tab value — used to validate the persisted tab on refresh. */
+  const NAV_TABS: Tab[] = [
+    "dashboard",
+    "contests",
+    "leaderboard",
+    "earn",
+    "signup",
+    "profile",
+    "wallet",
+    "organizer",
+  ];
+  // The active tab survives a page refresh: it is persisted to
+  // sessionStorage and restored on mount, so reloading while on the Profile
+  // (or any other) page reopens THAT page instead of bouncing back home.
+  const [tab, setTab] = useState<Tab>(() => {
+    const saved = sessionStorage.getItem("rivalry_tab");
+    return saved && NAV_TABS.includes(saved as Tab) ? (saved as Tab) : "dashboard";
+  });
   const [selected, setSelected] = useState<Contestant | null>(null);
   const [openContest, setOpenContest] = useState<Contest | null>(null);
   const [viewingProfile, setViewingProfile] = useState(false);
@@ -214,6 +236,11 @@ function MainApp() {
     allContestantsId: allContestantsScreen ? String(allContestantsScreen.apiId ?? allContestantsScreen.id) : null,
   }), [tab, openContest, selected, viewingProfile, allContestantsScreen]);
 
+  // Keep the persisted tab in sync so a refresh reopens the same page.
+  useEffect(() => {
+    sessionStorage.setItem("rivalry_tab", tab);
+  }, [tab]);
+
   // Seed the current history entry so the very first BACK returns here.
   useEffect(() => {
     if (!history.state?.nav) history.replaceState({ nav: navSnapshot() }, "");
@@ -237,6 +264,7 @@ function MainApp() {
       const nav = e.state?.nav;
       if (!nav) return; // hash deep links etc. — let the hash handlers run
       restoringNav.current = true;
+      navRestoredRef.current = true;
       const { contests: cs, allContestants: ac } = listsRef.current;
       const findContest = (id: string) =>
         cs.find((c) => String(c.apiId ?? c.id) === id) ?? null;
@@ -258,6 +286,24 @@ function MainApp() {
   // Anonymous regular visitors get a 10-second free preview of the site, then
   // the sign-up wall appears. Vote deep links skip the wall entirely, and a
   // Sign In button lets eager visitors trigger the wall themselves.
+  /** When the app restores state from history (back button), the tab change
+   *  that follows is NOT a user navigation — don't close the view-all page. */
+  const navRestoredRef = useRef(false);
+
+  // Close the "view all contestants" screen whenever the user navigates to
+  // another page — it must not keep floating above the newly opened page.
+  const prevTabRef = useRef(tab);
+  useEffect(() => {
+    if (prevTabRef.current === tab) return;
+    prevTabRef.current = tab;
+    if (navRestoredRef.current) {
+      navRestoredRef.current = false; // back-button restore, keep state
+      return;
+    }
+    setAllContestantsScreen(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
   const [showAuth, setShowAuth] = useState(false);
   const previewing = !user && !deepLinkVote;
   useEffect(() => {
@@ -309,15 +355,20 @@ function MainApp() {
       />
       {/* The live-votes ticker stays on the homepage only — it must not
           appear over the "view all contestants" page. */}
-      <VoteFeed
-        mobileVisible={tab === "dashboard" && !allContestantsScreen}
+      {/* Live votes feed — hidden entirely while the full "all contestants"
+          page or the "all joined contests" page is open, so its popup/toast
+          never floats above those full-screen lists. */}
+      {!allContestantsScreen && !showMyContests && (
+        <VoteFeed
+          mobileVisible={tab === "dashboard" && !allContestantsScreen && !showMyContests}
         onOpenContestant={(apiId) => {
           const found =
             allContestants.find((c) => String(c.apiId ?? "") === String(apiId)) ??
             allContestants.find((c) => String(c.id) === String(apiId));
           if (found) openProfile(found);
         }}
-      />
+        />
+      )}
       {tab === "dashboard" && !allContestantsScreen && !showMyContests && (
         <Dashboard
           onSelect={openProfile}
@@ -424,10 +475,19 @@ function MainApp() {
         />
       )}
       {tab === "earn" && <Earn />}
-      {tab === "wallet" && user && <Wallet />}
-      {tab === "organizer" && user && (
-        <OrganizerDashboard onBack={() => setTab("contests")} />
-      )}
+      {tab === "wallet" &&
+        user && (
+          <Suspense fallback={<WalletSkeleton />}> <Wallet /> </Suspense>
+        )}
+      {tab === "organizer" &&
+        user && (
+          <Suspense fallback={<OrganizerDashboardSkeleton />}>
+            <OrganizerDashboard
+              onBack={() => setTab("contests")}
+              onOpenWallet={() => setTab("wallet")}
+            />
+          </Suspense>
+        )}
       {tab === "profile" && viewingProfile && selected && (
         <Profile
           key={selected.id}

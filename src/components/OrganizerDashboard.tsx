@@ -14,11 +14,16 @@ import {
   CalendarDays,
   ImagePlus,
   Ticket,
+  Wallet,
+  Eye,
 } from "lucide-react";
 import {
-  becomeOrganiser,
+  applyForOrganiser,
   createContest,
   deleteContest,
+  getContestRevenue,
+  getMyOrganiserApplication,
+  listContestants,
   listMyOrganisedContests,
   updateContest,
   uploadImage,
@@ -26,6 +31,7 @@ import {
 } from "../lib/api";
 import { useAuth } from "../auth/AuthProvider";
 import { qk } from "../lib/queries";
+import OrganizerDashboardSkeleton from "./OrganizerDashboardSkeleton";
 import "./OrganizerDashboard.css";
 
 /** Contestant shown in the roster-preview info modal. */
@@ -109,7 +115,14 @@ const draftFrom = (c: OrganiserContest): Draft => ({
   reward3: c.rewards[2] ? String(c.rewards[2].amount) : "",
 });
 
-export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
+export default function OrganizerDashboard({
+  onBack,
+  onOpenWallet,
+}: {
+  onBack: () => void;
+  /** Open the Wallet tab (linked from the revenue modal). */
+  onOpenWallet?: () => void;
+}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data, isLoading, refetch } = useQuery({
@@ -118,9 +131,28 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
     enabled: !!user,
     staleTime: 10_000,
   });
+  const applicationQuery = useQuery({
+    queryKey: ["organiser-application"],
+    queryFn: getMyOrganiserApplication,
+    enabled: !!user && user.role !== "admin" && user.role !== "organiser",
+  });
+  const application = applicationQuery.data?.application ?? null;
   const contests = data?.contests ?? [];
 
-  const [upgrading, setUpgrading] = useState(false);
+  // The user's latest organiser application. While it's "pending" the
+  // dashboard shows an under-review notice; an admin must approve before the
+  // organiser tools appear. (When approved, role flips to organiser and the
+  // gate disappears entirely.)
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    reason: "",
+  });
+  const [applying, setApplying] = useState(false);
+  const [appError, setAppError] = useState("");
+  /** Apply form is collapsed until the user taps the entry-point button. */
+  const [showApply, setShowApply] = useState(false);
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -134,6 +166,29 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
     contestant: RosterContestant;
     contest: OrganiserContest;
   } | null>(null);
+
+  /** Contest whose revenue breakdown is open (banknote icon tap). */
+  const [revenueFor, setRevenueFor] = useState<OrganiserContest | null>(null);
+  const revenueQuery = useQuery({
+    queryKey: ["contest-revenue", revenueFor?.id],
+    queryFn: () => getContestRevenue(revenueFor!.id),
+    enabled: !!revenueFor,
+  });
+  /** Contest whose full contestant list is open ("View all" tap). */
+  const [rosterFor, setRosterFor] = useState<OrganiserContest | null>(null);
+  const rosterQuery = useQuery({
+    queryKey: ["contest-roster", rosterFor?.id],
+    queryFn: () => listContestants(rosterFor!.id),
+    enabled: !!rosterFor,
+  });
+  /** Contest whose preview modal is open (cover tap). */
+  const [previewContest, setPreviewContest] = useState<OrganiserContest | null>(
+    null,
+  );
+  /** Which contest status button is mid-request — shows a preloader on it. */
+  const [statusBusy, setStatusBusy] = useState<{ id: string; s: string } | null>(
+    null,
+  );
 
   const set = (k: keyof Draft) => (v: string) =>
     setDraft((d) => ({ ...d, [k]: v }));
@@ -152,18 +207,28 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
     setError("");
   };
 
-  const upgradeToOrganiser = async () => {
-    setUpgrading(true);
-    setError("");
+  const submitApplication = async () => {
+    if (!form.fullName.trim() || !form.email.trim() || !form.phone.trim() || !form.reason.trim()) {
+      setAppError("Please fill in every field.");
+      return;
+    }
+    setApplying(true);
+    setAppError("");
     try {
-      await becomeOrganiser();
-      await refetch();
+      await applyForOrganiser({
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        reason: form.reason.trim(),
+      });
+      await applicationQuery.refetch();
+      setForm({ fullName: "", email: "", phone: "", reason: "" });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not become an organiser",
+      setAppError(
+        err instanceof Error ? err.message : "Could not submit your application",
       );
     } finally {
-      setUpgrading(false);
+      setApplying(false);
     }
   };
 
@@ -282,45 +347,135 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
           <h1 className="orgdash__title">Organiser Dashboard</h1>
           <p className="orgdash__sub">Create and manage your contests</p>
         </div>
-        {mode === "list" && (
-          <button className="orgdash__new" onClick={openCreate}>
-            <Plus size={16} /> New contest
-          </button>
-        )}
+        {/* "New contest" only for users who actually hold organiser
+            privileges (admin / approved organiser) — while an application is
+            pending the user is gated below and can't create contests. */}
+        {mode === "list" &&
+          user &&
+          (user.role === "admin" || user.role === "organiser") && (
+            <button className="orgdash__new" onClick={openCreate}>
+              <Plus size={16} /> New contest
+            </button>
+          )}
       </header>
 
       {error && <p className="orgdash__error">{error}</p>}
 
-      {/* Signed-in user who is not yet an organiser: self-upgrade gate */}
+      {/* Non-organiser gate: apply → under review → (admin approves) */}
       {user && user.role !== "admin" && user.role !== "organiser" && (
         <div className="orgdash__gate">
           <Swords size={20} />
-          <div>
-            <h2>Become an organiser</h2>
-            <p>
-              Unlock the ability to create and run your own contests. Any
-              signed-in account can upgrade instantly.
-            </p>
-          </div>
-          <button
-            className="orgdash__upgrade"
-            onClick={upgradeToOrganiser}
-            disabled={upgrading}
-          >
-            {upgrading ? (
-              <Loader2 size={16} className="orgdash__spin" />
-            ) : (
-              "Upgrade"
-            )}
-          </button>
+          {application?.status === "pending" ? (
+            <div>
+              <h2>Application under review</h2>
+              <p>
+                Thanks for applying, {application.fullName}. Our team is
+                reviewing your request — once approved you'll be able to create
+                and manage your own contests right here.
+              </p>
+              <p className="orgdash__gate-applied">
+                Submitted{"\u00A0"}
+                {new Date(application.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          ) : application?.status === "rejected" ? (
+            <div>
+              <h2>Application declined</h2>
+              <p>
+                Your previous organiser application was not approved. You can
+                update your details and apply again below.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <h2>Become an organiser</h2>
+              <p>
+                Apply to unlock the ability to create and run your own
+                contests. Applications are reviewed by our team before
+                approval.
+              </p>
+            </div>
+          )}
+          {/* Entry point — the form stays collapsed until this is tapped */}
+          {application?.status !== "pending" && (
+            <button
+              className="orgdash__upgrade"
+              onClick={() => setShowApply((v) => !v)}
+              aria-expanded={showApply}
+            >
+              {showApply ? "Hide form" : "Apply now"}
+            </button>
+          )}
+          {/* The apply form collapses until the user taps the entry point —
+              and stays hidden whenever there is already a pending application */}
+          {showApply && application?.status !== "pending" && (
+            <div className="orgdash__apply-form">
+              <div className="orgdash__field-row">
+                <label className="orgdash__field">
+                  Full name
+                  <input
+                    value={form.fullName || application?.fullName || ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, fullName: e.target.value }))
+                    }
+                    placeholder="Ada Obi"
+                  />
+                </label>
+                <label className="orgdash__field">
+                  Email
+                  <input
+                    type="email"
+                    value={form.email || application?.email || ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    placeholder="ada@example.com"
+                  />
+                </label>
+              </div>
+              <div className="orgdash__field-row">
+                <label className="orgdash__field">
+                  Phone
+                  <input
+                    value={form.phone || application?.phone || ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, phone: e.target.value }))
+                    }
+                    placeholder="0803 000 0000"
+                  />
+                </label>
+                <label className="orgdash__field orgdash__apply-reason">
+                  Why do you want to organise contests?
+                  <textarea
+                    value={form.reason || ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, reason: e.target.value }))
+                    }
+                    placeholder="Tell us about the contests you plan to run…"
+                    rows={3}
+                  />
+                </label>
+              </div>
+              {appError && <p className="orgdash__error">{appError}</p>}
+              <button
+                className="orgdash__upgrade"
+                onClick={submitApplication}
+                disabled={applying}
+              >
+                {applying ? (
+                  <Loader2 size={16} className="orgdash__spin" />
+                ) : (
+                  "Apply"
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {mode === "list" && (
         <section className="orgdash__list">
-          {isLoading && (
-            <p className="orgdash__loading">Loading your contests…</p>
-          )}
+          {isLoading && <OrganizerDashboardSkeleton cards={0} />}
           {!isLoading && contests.length === 0 && (
             <p className="orgdash__empty">
               You haven't created any contests yet. Tap "New contest" to start
@@ -329,8 +484,21 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
           )}
           {contests.map((c) => (
             <div key={c.id} className="orgdash__card">
-              <div className="orgdash__card-cover">
+              <div
+                className="orgdash__card-cover"
+                role="button"
+                tabIndex={0}
+                onClick={() => setPreviewContest(c)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setPreviewContest(c);
+                }}
+                aria-label={`Preview ${c.title}`}
+                title="Preview contest"
+              >
                 <img src={c.coverImage} alt={c.title} loading="lazy" />
+                <span className="orgdash__cover-eye">
+                  <Eye size={16} /> Preview
+                </span>
                 <span className={`orgdash__badge orgdash__badge--${c.status}`}>
                   {c.status === "voting-live"
                     ? "Voting Live"
@@ -385,21 +553,27 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
                       </button>
                     ))}
                     {c.contestantCount > ROSTER_PREVIEW && (
-                      <span className="orgdash__card-more">
-                        +{c.contestantCount - ROSTER_PREVIEW}
-                      </span>
+                      <button
+                        className="orgdash__roster-more"
+                        onClick={() => setRosterFor(c)}
+                        aria-label={`View all ${c.contestantCount} contestants`}
+                      >
+                        +{c.contestantCount - ROSTER_PREVIEW} more
+                      </button>
                     )}
                   </div>
                 )}
                 <div className="orgdash__card-actions">
                   {/* Manual status override — organiser can pin the contest
                       live/upcoming/ended regardless of the timeline. */}
-                  {STATUS_OPTIONS.map((s) => (
+                  {STATUS_OPTIONS.map((s) => {
+                    const isBusy = statusBusy?.id === c.id && statusBusy.s === s;
+                    return (
                     <button
                       key={s}
                       onClick={async () => {
                         if (s === c.status) return;
-                        setBusy(true);
+                        setStatusBusy({ id: c.id, s });
                         setError("");
                         try {
                           await updateContest(c.id, { status: s });
@@ -414,25 +588,37 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
                               : "Could not update status",
                           );
                         } finally {
-                          setBusy(false);
+                          setStatusBusy(null);
                         }
                       }}
-                      disabled={busy || s === c.status}
+                      disabled={busy || !!statusBusy || s === c.status}
                       className={
                         s === c.status
                           ? "orgdash__status-btn orgdash__status-btn--active"
                           : "orgdash__status-btn"
                       }
                     >
+                      {isBusy && (
+                        <Loader2 size={12} className="orgdash__spin" />
+                      )}
                       {s === "voting-live"
                         ? "Go Live"
                         : s === "upcoming"
                           ? "Upcoming"
                           : "End"}
                     </button>
-                  ))}
+                    );
+                  })}
                   <button onClick={() => openEdit(c)} disabled={busy}>
                     <Pencil size={14} /> Edit
+                  </button>
+                  <button
+                    className="orgdash__revenue-btn"
+                    onClick={() => setRevenueFor(c)}
+                    aria-label={`View revenue from ${c.title}`}
+                    title="Revenue"
+                  >
+                    <Wallet size={14} /> Revenue
                   </button>
                   <button
                     className="orgdash__delete"
@@ -448,7 +634,12 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
         </section>
       )}
 
-      {(mode === "create" || mode === "edit") && (
+      {/* The create/edit form only for approved organisers/admins too —
+          a non-organiser can never reach it via "New contest", and if mode
+          was already "create" when their application appeared, this guard
+          prevents the form from lingering under the pending gate. */}
+      {(mode === "create" || mode === "edit") &&
+        (!user || user.role === "admin" || user.role === "organiser") && (
         <section className="orgdash__form">
           <h2>{mode === "create" ? "Create contest" : "Edit contest"}</h2>
           <label className="orgdash__field">
@@ -678,6 +869,192 @@ export default function OrganizerDashboard({ onBack }: { onBack: () => void }) {
                   <Trash2 size={15} />
                 )}{" "}
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Revenue breakdown modal — opened by the Wallet icon on a card */}
+      {revenueFor && (
+        <div className="orgdash__modal" onClick={() => setRevenueFor(null)}>
+          <div
+            className="orgdash__modal-card orgdash__revenue-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Revenue</h3>
+            <p className="orgdash__info-contest">
+              <Swords size={13} /> {revenueFor.title}
+            </p>
+            {revenueQuery.isLoading ? (
+              <Loader2 size={20} className="orgdash__spin orgdash__revenue-loading" />
+            ) : revenueQuery.error ? (
+              <p className="orgdash__error">
+                {revenueQuery.error instanceof Error
+                  ? revenueQuery.error.message
+                  : "Could not load revenue"}
+              </p>
+            ) : revenueQuery.data ? (
+              <>
+                <div className="orgdash__revenue-total">
+                  <strong>{naira(revenueQuery.data.revenue.total)}</strong>
+                  <span>Total generated</span>
+                </div>
+                <div className="orgdash__revenue-rows">
+                  <div className="orgdash__revenue-row">
+                    <span>Votes ({revenueQuery.data.revenue.votes.toLocaleString()} × {naira(revenueFor.votePrice ?? 100)})</span>
+                    <strong>{naira(revenueQuery.data.revenue.voteRevenue)}</strong>
+                  </div>
+                  <div className="orgdash__revenue-row">
+                    <span>
+                      Entry fees ({revenueQuery.data.revenue.contestants} ×{" "}
+                      {revenueFor.entryFee ? naira(revenueFor.entryFee) : "₦0"})
+                    </span>
+                    <strong>{naira(revenueQuery.data.revenue.entryRevenue)}</strong>
+                  </div>
+                </div>
+                {!revenueFor.entryFee && (
+                  <p className="orgdash__revenue-note">
+                    Free-entry contest — no entry fees collected.
+                  </p>
+                )}
+                {onOpenWallet && (
+                  <button
+                    className="orgdash__wallet-link"
+                    onClick={() => {
+                      setRevenueFor(null);
+                      onOpenWallet();
+                    }}
+                  >
+                    <Wallet size={14} /> View in Wallet
+                  </button>
+                )}
+              </>
+            ) : null}
+            <button
+              className="orgdash__modal-cancel orgdash__info-close"
+              onClick={() => setRevenueFor(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Full contestant list modal — opened by the "+N more" roster button */}
+      {rosterFor && (
+        <div className="orgdash__modal" onClick={() => setRosterFor(null)}>
+          <div
+            className="orgdash__modal-card orgdash__roster-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Contestants</h3>
+            <p className="orgdash__info-contest">
+              <Swords size={13} /> {rosterFor.title}
+            </p>
+            {rosterQuery.isLoading ? (
+              <Loader2 size={20} className="orgdash__spin orgdash__revenue-loading" />
+            ) : rosterQuery.error ? (
+              <p className="orgdash__error">
+                {rosterQuery.error instanceof Error
+                  ? rosterQuery.error.message
+                  : "Could not load contestants"}
+              </p>
+            ) : (
+              <ul className="orgdash__roster-list">
+                {(rosterQuery.data?.contestants ?? []).map((ct) => (
+                  <li key={ct.id} className="orgdash__roster-item">
+                    <img src={ct.heroImage} alt={ct.name} loading="lazy" />
+                    <div className="orgdash__roster-item-info">
+                      <span>#{ct.number} {ct.name}</span>
+                      <small>{ct.votes.toLocaleString()} votes</small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              className="orgdash__modal-cancel orgdash__info-close"
+              onClick={() => setRosterFor(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Contest preview modal — opened by tapping the cover */}
+      {previewContest && (
+        <div
+          className="orgdash__modal"
+          onClick={() => setPreviewContest(null)}
+        >
+          <div
+            className="orgdash__modal-card orgdash__preview-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              className="orgdash__preview-cover"
+              src={previewContest.coverImage}
+              alt={previewContest.title}
+            />
+            <h3>{previewContest.title}</h3>
+            <p className="orgdash__preview-tagline">
+              {previewContest.tagline}
+            </p>
+            <div className="orgdash__info-stats">
+              <div>
+                <strong>{previewContest.contestantCount}</strong>
+                <span>Contestants</span>
+              </div>
+              <div>
+                <strong>
+                  {previewContest.totalVotes.toLocaleString()}
+                </strong>
+                <span>Votes</span>
+              </div>
+              <div>
+                <strong>
+                  {previewContest.rewards[0]
+                    ? naira(previewContest.rewards[0].amount)
+                    : "—"}
+                </strong>
+                <span>Top prize</span>
+              </div>
+            </div>
+            <p className="orgdash__info-meta">
+              <Clock size={13} /> {fmtLeft(previewContest.endsAt)} ·{" "}
+              <Vote size={13} /> {naira(previewContest.votePrice ?? 100)} / vote
+            </p>
+            {previewContest.contestants.length > 0 && (
+              <div className="orgdash__card-roster orgdash__preview-roster">
+                {previewContest.contestants
+                  .slice(0, ROSTER_PREVIEW)
+                  .map((ct) => (
+                    <img
+                      key={ct.id}
+                      src={ct.heroImage}
+                      alt={ct.name}
+                      loading="lazy"
+                    />
+                  ))}
+              </div>
+            )}
+            <div className="orgdash__preview-actions">
+              <button
+                className="orgdash__preview-edit"
+                onClick={() => {
+                  setPreviewContest(null);
+                  openEdit(previewContest);
+                }}
+              >
+                <Pencil size={14} /> Edit contest
+              </button>
+              <button
+                className="orgdash__modal-cancel"
+                onClick={() => setPreviewContest(null)}
+              >
+                Close
               </button>
             </div>
           </div>

@@ -102,6 +102,16 @@ export default function Contests({
             Pick a contest, rally support, and win big.
           </p>
         </div>
+        {onOpenDashboard && (
+          <button
+            className="contest-detail__dashbtn contests-page__dashbtn"
+            onClick={onOpenDashboard}
+            aria-label="Organiser dashboard"
+            title="Organiser dashboard"
+          >
+            <LayoutDashboard size={17} />
+          </button>
+        )}
       </div>
       <div className="contests-page__grid">
         {list.map((c) => (
