@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   Minus,
@@ -6,27 +6,21 @@ import {
   ShieldCheck,
   Loader2,
   CheckCircle2,
+  Copy,
+  Landmark,
+  RefreshCw,
 } from "lucide-react";
-import { castVote } from "../lib/api";
+import {
+  createVoteAccount,
+  getContestant,
+  getPaymentStatus,
+  type ApiPaymentIntent,
+} from "../lib/api";
 import { formatNaira } from "../data";
 import "./VoteModal.css";
 
 /** Fallback price per vote in Naira when a contest doesn't set its own. */
 export const VOTE_PRICE = 100;
-
-/**
- * SIMULATED PAYMENT — replace this with your real gateway (Paystack,
- * Flutterwave, etc.). It should resolve when payment succeeds and reject
- * when it fails/cancelled. The rest of the flow stays the same.
- */
-function processPayment(_amountNaira: number): Promise<{ reference: string }> {
-  return new Promise((resolve) => {
-    setTimeout(
-      () => resolve({ reference: `SIM-${Date.now().toString(36).toUpperCase()}` }),
-      1400,
-    );
-  });
-}
 
 interface VoteModalProps {
   contestantId: string; // API (ObjectId) id used for voting
@@ -38,7 +32,7 @@ interface VoteModalProps {
   onVoted: (newTotal: number, votesAdded: number) => void;
 }
 
-type Stage = "form" | "paying" | "done";
+type Stage = "form" | "generating" | "transfer" | "done";
 
 export default function VoteModal({
   contestantId,
@@ -53,6 +47,9 @@ export default function VoteModal({
   const [stage, setStage] = useState<Stage>("form");
   const [error, setError] = useState<string | null>(null);
   const [totalAfter, setTotalAfter] = useState(0);
+  const [payment, setPayment] = useState<ApiPaymentIntent | null>(null);
+  const [copied, setCopied] = useState<"account" | "amount" | null>(null);
+  const pollRef = useRef<number | null>(null);
 
   // Lock body scroll while the modal is open
   useEffect(() => {
@@ -71,39 +68,82 @@ export default function VoteModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [stage, onClose]);
 
+  // Stop polling if the modal unmounts
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+    };
+  }, []);
+
   const price = votePrice && votePrice > 0 ? votePrice : VOTE_PRICE;
 
   const total = useMemo(() => votes * price, [votes, price]);
 
   const isValidId = /^[0-9a-fA-F]{24}$/.test(contestantId);
 
-  const processVote = async () => {
+  /**
+   * Step 1 of payment: ask the backend for a DYNAMIC virtual account from
+   * KoboPoint, dedicated to exactly this vote batch. Once shown, we poll the
+   * payment status until the transfer lands (webhook or verification).
+   */
+  const generateAccount = async () => {
     if (stage !== "form") return;
     if (!isValidId) {
       setError("Demo mode: voting opens when connected to the live contest.");
       return;
     }
-    setStage("paying");
+    setStage("generating");
     setError(null);
     try {
-      // 1. Take the payment (simulated for now)
-      const payment = await processPayment(total);
-      // 2. Credit the votes on the backend
-      const res = await castVote(contestantId, {
-        amount: votes,
+      const res = await createVoteAccount({
+        contestantId,
+        votes,
         supporterName: name.trim() || "Anonymous",
-        reference: payment.reference,
       });
-      setTotalAfter(res.contestantVotes);
-      setStage("done");
-      onVoted(res.contestantVotes, votes);
+      setPayment(res.payment);
+      setStage("transfer");
+      startPolling(res.payment.reference);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Payment could not be completed. Please try again.",
+          : "Could not generate a payment account. Please try again.",
       );
       setStage("form");
+    }
+  };
+
+  /**
+   * Step 2: watch the payment until the transfer arrives, then credit the
+   * votes locally (the backend has already credited them by this point).
+   */
+  const startPolling = (reference: string) => {
+    if (pollRef.current) window.clearInterval(pollRef.current);
+    pollRef.current = window.setInterval(async () => {
+      try {
+        const res = await getPaymentStatus(reference);
+        if (res.payment.status === "paid") {
+          if (pollRef.current) window.clearInterval(pollRef.current);
+          setTotalAfter(res.payment.votes);
+          setStage("done");
+          // Fetch the contestant's fresh total (backend already credited it)
+          getContestant(contestantId)
+            .then((c) => onVoted(c.contestant.votes, res.payment.votes))
+            .catch(() => onVoted(res.payment.votes, res.payment.votes));
+        }
+      } catch {
+        /* transient network errors — keep polling */
+      }
+    }, 5000);
+  };
+
+  const copy = async (text: string, which: "account" | "amount") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      /* clipboard unavailable */
     }
   };
 
@@ -152,6 +192,49 @@ export default function VoteModal({
             <button className="vote-modal__pay" onClick={onClose}>
               Done
             </button>
+          </div>
+        ) : stage === "transfer" && payment ? (
+          <div className="vote-modal__transfer">
+            <p className="vote-modal__transfer-hint">
+              Transfer <strong>{formatNaira(payment.amount)}</strong> to this
+              one-time account. Your {payment.votes} vote
+              {payment.votes > 1 ? "s" : ""} will be credited automatically
+              the moment it lands.
+            </p>
+            <div className="vote-modal__account">
+              <div className="vote-modal__account-row">
+                <Landmark size={16} />
+                <span>{payment.bankName || "Bank"}</span>
+              </div>
+              <button
+                className="vote-modal__account-number"
+                onClick={() => copy(payment.accountNumber, "account")}
+                title="Tap to copy"
+              >
+                {payment.accountNumber}
+                {copied === "account" ? (
+                  <CheckCircle2 size={14} />
+                ) : (
+                  <Copy size={14} />
+                )}
+              </button>
+              <p className="vote-modal__account-name">{payment.accountName}</p>
+              <button
+                className="vote-modal__copy-amount"
+                onClick={() => copy(String(payment.amount), "amount")}
+              >
+                {copied === "amount" ? "Copied ✓" : `Copy ${formatNaira(payment.amount)}`}
+              </button>
+            </div>
+            <div className="vote-modal__waiting">
+              <Loader2 size={14} className="vote-modal__spinner" />
+              Waiting for your transfer…
+              <RefreshCw size={12} />
+            </div>
+            <p className="vote-modal__note">
+              This account is for this payment only and expires in 60 minutes.
+              Transfer the exact amount from any Nigerian bank app.
+            </p>
           </div>
         ) : (
           <>
@@ -228,18 +311,18 @@ export default function VoteModal({
 
             <button
               className="vote-modal__pay"
-              onClick={processVote}
-              disabled={stage === "paying"}
+              onClick={generateAccount}
+              disabled={stage === "generating"}
             >
-              {stage === "paying" ? (
+              {stage === "generating" ? (
                 <>
                   <Loader2 size={16} className="vote-modal__spinner" />
-                  Processing payment…
+                  Generating account…
                 </>
               ) : (
                 <>
                   <ShieldCheck size={16} />
-                  Pay {formatNaira(total)} &amp; Vote
+                  Continue — Pay {formatNaira(total)}
                 </>
               )}
             </button>

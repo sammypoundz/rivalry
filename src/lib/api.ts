@@ -402,6 +402,42 @@ export async function castVote(
   });
 }
 
+// ---------- Payments (KoboPoint dynamic virtual accounts) ----------
+export interface ApiPaymentIntent {
+  reference: string;
+  status: "pending" | "paid" | "expired" | string;
+  votes: number;
+  amount: number;
+  accountNumber: string;
+  accountName: string;
+  bankName: string;
+  expiresAt: string;
+}
+
+/**
+ * Generate a dynamic bank account for the exact vote amount. The supporter
+ * transfers to it; the backend credits the votes when the payment lands.
+ */
+export async function createVoteAccount(input: {
+  contestantId: string;
+  votes: number;
+  supporterName?: string;
+  payerEmail?: string;
+  payerPhone?: string;
+}) {
+  return request<{ success: true; payment: ApiPaymentIntent }>(
+    "/payments/vote-account",
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}
+
+/** Poll while the supporter makes the transfer. Resolves when paid. */
+export async function getPaymentStatus(reference: string) {
+  return request<{ success: true; payment: ApiPaymentIntent }>(
+    `/payments/${encodeURIComponent(reference)}/status`,
+  );
+}
+
 export async function listSupporters(contestantId: string) {
   return request<{ success: true; supporters: ApiSupporter[] }>(
     `/contestants/${contestantId}/supporters`,
