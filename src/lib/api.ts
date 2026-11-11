@@ -438,6 +438,18 @@ export async function getPaymentStatus(reference: string) {
   );
 }
 
+/** Manually check with KoboPoint whether the transfer has landed. */
+export async function verifyPayment(reference: string) {
+  return request<{
+    success: true;
+    verified: boolean;
+    payment: ApiPaymentIntent;
+    settled: boolean;
+  }>(`/payments/${encodeURIComponent(reference)}/verify`, {
+    method: "POST",
+  });
+}
+
 export async function listSupporters(contestantId: string) {
   return request<{ success: true; supporters: ApiSupporter[] }>(
     `/contestants/${contestantId}/supporters`,

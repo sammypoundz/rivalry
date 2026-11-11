@@ -14,6 +14,7 @@ import {
   createVoteAccount,
   getContestant,
   getPaymentStatus,
+  verifyPayment,
   type ApiPaymentIntent,
 } from "../lib/api";
 import { formatNaira } from "../data";
@@ -49,6 +50,8 @@ export default function VoteModal({
   const [totalAfter, setTotalAfter] = useState(0);
   const [payment, setPayment] = useState<ApiPaymentIntent | null>(null);
   const [copied, setCopied] = useState<"account" | "amount" | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyNote, setVerifyNote] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
 
   // Lock body scroll while the modal is open
@@ -62,7 +65,9 @@ export default function VoteModal({
   // Escape to close (only before payment starts)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && stage === "form") onClose();
+      if (e.key !== "Escape") return;
+      if (stage === "transfer") cancelPayment();
+      else if (stage === "form" || stage === "done") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -116,6 +121,7 @@ export default function VoteModal({
   /**
    * Step 2: watch the payment until the transfer arrives, then credit the
    * votes locally (the backend has already credited them by this point).
+   * Polls every 3s AND the supporter can force a check with the button.
    */
   const startPolling = (reference: string) => {
     if (pollRef.current) window.clearInterval(pollRef.current);
@@ -124,17 +130,48 @@ export default function VoteModal({
         const res = await getPaymentStatus(reference);
         if (res.payment.status === "paid") {
           if (pollRef.current) window.clearInterval(pollRef.current);
-          setTotalAfter(res.payment.votes);
-          setStage("done");
-          // Fetch the contestant's fresh total (backend already credited it)
-          getContestant(contestantId)
-            .then((c) => onVoted(c.contestant.votes, res.payment.votes))
-            .catch(() => onVoted(res.payment.votes, res.payment.votes));
+          markPaid(res.payment);
         }
       } catch {
         /* transient network errors — keep polling */
       }
-    }, 5000);
+    }, 3000);
+  };
+
+  /** Flip to the success screen once the backend reports the votes paid. */
+  const markPaid = (p: ApiPaymentIntent) => {
+    setPayment(p);
+    setTotalAfter(p.votes);
+    setStage("done");
+    // Fetch the contestant's fresh total (backend already credited it)
+    getContestant(contestantId)
+      .then((c) => onVoted(c.contestant.votes, p.votes))
+      .catch(() => onVoted(p.votes, p.votes));
+  };
+
+  /**
+   * The supporter taps this after sending the transfer — actively asks the
+   * backend to check KoboPoint for the payment and credit instantly.
+   */
+  const manualVerify = async () => {
+    if (!payment || verifying) return;
+    setVerifying(true);
+    setVerifyNote(null);
+    try {
+      const res = await verifyPayment(payment.reference);
+      if (res.payment.status === "paid") {
+        if (pollRef.current) window.clearInterval(pollRef.current);
+        markPaid(res.payment);
+      } else {
+        setVerifyNote(
+          "No payment found yet. If you've just sent it, give it ~30 seconds and try again — transfers can take a minute to reflect.",
+        );
+      }
+    } catch {
+      setVerifyNote("Couldn't check right now — please try again in a moment.");
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const copy = async (text: string, which: "account" | "amount") => {
@@ -147,6 +184,18 @@ export default function VoteModal({
     }
   };
 
+  /** While waiting for a transfer, closing means cancelling — stop polling
+   *  and go back to the form (or leave the modal entirely). */
+  const cancelPayment = () => {
+    if (pollRef.current) window.clearInterval(pollRef.current);
+    setPayment(null);
+    setError(null);
+    setStage("form");
+  };
+
+  // Can leave the modal entirely: before starting, or once finished.
+  const closable = stage === "form" || stage === "done";
+
   const quick = [10, 50, 100, 500];
 
   return (
@@ -156,16 +205,13 @@ export default function VoteModal({
       aria-modal="true"
       aria-label={`Vote for ${contestantName}`}
     >
-      <div
-        className="vote-modal__backdrop"
-        onClick={stage === "form" ? onClose : undefined}
-      />
+      <div className="vote-modal__backdrop" onClick={closable ? onClose : undefined} />
       <div className="vote-modal__card">
         <button
           className="vote-modal__close"
-          aria-label="Close"
-          onClick={stage === "form" ? onClose : undefined}
-          disabled={stage !== "form"}
+          aria-label={closable ? "Close" : "Cancel this payment"}
+          onClick={closable ? onClose : cancelPayment}
+          disabled={!closable && stage === "generating"}
         >
           <X size={16} />
         </button>
@@ -229,12 +275,33 @@ export default function VoteModal({
             <div className="vote-modal__waiting">
               <Loader2 size={14} className="vote-modal__spinner" />
               Waiting for your transfer…
-              <RefreshCw size={12} />
             </div>
+
+            <button
+              className="vote-modal__verify"
+              onClick={manualVerify}
+              disabled={verifying}
+            >
+              {verifying ? (
+                <>
+                  <Loader2 size={16} className="vote-modal__spinner" />
+                  Checking payment…
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={16} />
+                  I've sent the money — Verify now
+                </>
+              )}
+            </button>
+            {verifyNote && <p className="vote-modal__verify-note">{verifyNote}</p>}
             <p className="vote-modal__note">
               This account is for this payment only and expires in 60 minutes.
               Transfer the exact amount from any Nigerian bank app.
             </p>
+            <button className="vote-modal__cancel" onClick={cancelPayment}>
+              Cancel this payment
+            </button>
           </div>
         ) : (
           <>

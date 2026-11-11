@@ -383,3 +383,48 @@
 .vote-modal__waiting svg:first-child {
   color: #3ddc84;
 }
+.vote-modal__cancel {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--grey, #999);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  align-self: center;
+  transition: color 0.2s, border-color 0.2s;
+}
+.vote-modal__cancel:hover {
+  color: var(--white, #fff);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.vote-modal__verify {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: linear-gradient(135deg, #d4af37, #b8962e);
+  border: none;
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 13px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.vote-modal__verify:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.vote-modal__verify:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.vote-modal__verify-note {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--grey, #999);
+  text-align: center;
+}
